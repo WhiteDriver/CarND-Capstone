@@ -5,7 +5,7 @@
 * Team Lead - Guntis Valters: guntis.valters@gmail.com
 * Vladimir Vishnerevsky: vishnerevsky@gmail.com
 * Sven Röder: svenroed@gmail.com
-* Omar Tawfik: omarhanysalah@gmail.com
+* Omar Tawfik: omar.tawfik@vodafone.com
 * Dominic Monn: monn.dominic@gmail.com
 
 ## Introduction
