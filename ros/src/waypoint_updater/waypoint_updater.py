@@ -33,19 +33,61 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
-
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
+
         # TODO: Add other member variables you need below
+
+        # Valtgun 19.08.2017 - added variables for storing global map
+        mapX = [] # variable to store waypoint X coordinate from /base_waypoints
+        mapY = [] # variable to store waypoint Y coordinate from /base_waypoints
+        map_wp_len = 0 #numper of map waypoints in /base_waypoints
 
         rospy.spin()
 
     def pose_cb(self, msg):
-        # TODO: Implement
+        # Valtgun 19.08.2017 - locate nearest waypoint ahead
+        pose_x = msg.pose.position.x
+        pose_y = msg.pose.position.y
+        nearest_waypoint = self.closest_waypoint(pose_x, pose_y, self.mapX, self.mapY)
+        # TODO: can return closest waypoint even if it is behind, need to add orientation check
+        # If need to implement then C++ code can be taken from
+        # CarND-Path-Planning-Project function NextWaypoint
+        # in that case heading is required
+
+        # Valtgun 19.08.2017 - get next LOOKAHEAD_WPS waypoints
+        pub_list = []
+        for i in range(LOOKAHEAD_WPS):
+            p = Waypoint()
+            p.pose.pose.position.x = float(self.mapX[nearest_waypoint+i])
+            p.pose.pose.position.y = float(self.mapY[nearest_waypoint+i])
+            p.pose.pose.position.z = float(0.0)
+            pub_list.append(p)
+
+        # Valtgun 19.08.2017 - create correct data structure for publishing
+        lane = Lane()
+        lane.header.frame_id = msg.header.frame_id
+        lane.header.stamp = rospy.Time(0)
+        lane.waypoints = pub_list
+
+        # Valtgun 19.08.2017 - publish to /final_waypoints
+        # TODO: need to check if always need publishing on pose_cb, possibly performance issues
+        self.final_waypoints_pub.publish(lane)
         pass
 
     def waypoints_cb(self, waypoints):
-        # TODO: Implement
+        # Valtgun 19.08.2017 - create two lists one with X and other with Y waypoints
+        new_map_wp_len = len(waypoints.waypoints)
+        new_mapX = []
+        new_mapY = []
+        for waypoint in waypoints.waypoints[:]:
+            new_mapX.append(waypoint.pose.pose.position.x)
+            new_mapY.append(waypoint.pose.pose.position.y)
+
+        # Valtgun 19.08.2017 - assign to global variables
+        self.mapX = new_mapX
+        self.mapY = new_mapY
+        self.map_wp_len = new_map_wp_len
         pass
 
     def traffic_cb(self, msg):
@@ -70,6 +112,23 @@ class WaypointUpdater(object):
             wp1 = i
         return dist
 
+    # Valtgun 19.08.2017 - calculate distance between two points
+    def dist_two_points(self, x1, y1, x2, y2):
+        return math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1))
+
+    # Valtgun 19.08.2017 - finds nearest waypoint
+    def closest_waypoint(self, x, y, maps_x, maps_y):
+        closest_wp_dist = 999999.9;
+        closest_wp = 0;
+
+        for i in range(self.map_wp_len):
+            map_x = maps_x[i]
+            map_y = maps_y[i]
+            dist = self.dist_two_points(x, y, map_x, map_y)
+            if (dist < closest_wp_dist):
+                closest_wp_dist = dist
+                closest_wp = i
+        return closest_wp
 
 if __name__ == '__main__':
     try:
