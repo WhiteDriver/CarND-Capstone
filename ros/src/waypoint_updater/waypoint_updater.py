@@ -42,6 +42,7 @@ class WaypointUpdater(object):
         mapX = [] # variable to store waypoint X coordinate from /base_waypoints
         mapY = [] # variable to store waypoint Y coordinate from /base_waypoints
         map_wp_len = 0 #numper of map waypoints in /base_waypoints
+        mapWP = [] # array to store map waypoints for full information
 
         rospy.spin()
 
@@ -58,11 +59,8 @@ class WaypointUpdater(object):
         # Valtgun 19.08.2017 - get next LOOKAHEAD_WPS waypoints
         pub_list = []
         for i in range(LOOKAHEAD_WPS):
-            p = Waypoint()
-            p.pose.pose.position.x = float(self.mapX[nearest_waypoint+i])
-            p.pose.pose.position.y = float(self.mapY[nearest_waypoint+i])
-            p.pose.pose.position.z = float(0.0)
-            pub_list.append(p)
+            # Valtgun 20.08.2017 - changed to waypoint to contain full information
+            pub_list.append(self.mapWP[nearest_waypoint+i])
 
         # Valtgun 19.08.2017 - create correct data structure for publishing
         lane = Lane()
@@ -72,7 +70,8 @@ class WaypointUpdater(object):
 
         # Valtgun 19.08.2017 - publish to /final_waypoints
         # TODO: need to check if always need publishing on pose_cb, possibly performance issues
-        self.final_waypoints_pub.publish(lane)
+        if (not rospy.is_shutdown()):
+            self.final_waypoints_pub.publish(lane)
         pass
 
     def waypoints_cb(self, waypoints):
@@ -80,13 +79,16 @@ class WaypointUpdater(object):
         new_map_wp_len = len(waypoints.waypoints)
         new_mapX = []
         new_mapY = []
+        new_mapWP = []
         for waypoint in waypoints.waypoints[:]:
             new_mapX.append(waypoint.pose.pose.position.x)
             new_mapY.append(waypoint.pose.pose.position.y)
+            new_mapWP.append(waypoint)
 
         # Valtgun 19.08.2017 - assign to global variables
         self.mapX = new_mapX
         self.mapY = new_mapY
+        self.mapWP = new_mapWP
         self.map_wp_len = new_map_wp_len
         pass
 
