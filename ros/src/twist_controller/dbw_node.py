@@ -3,7 +3,8 @@
 import rospy
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, PoseStamped
+from styx_msgs.msg import Lane, Waypoint
 import math
 
 from twist_controller import Controller
@@ -55,8 +56,19 @@ class DBWNode(object):
 
         # TODO: Create `TwistController` object
         # self.controller = TwistController(<Arguments you wish to provide>)
+        self.controller = Controller(max_st_angle = max_steer_angle)
 
         # TODO: Subscribe to all the topics you need to
+        # Valtgun 20.08.2017 - subscribe to is DBW enabled topic
+        self.dbw_enabled = False
+        rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_cb)
+
+        # Valtgun 20.08.2017 - subscribe to next waypoints
+        rospy.Subscriber('/final_waypoints', Lane, self.waypoints_cb)
+        # target X,Y coordinates for simple waypoint lookup
+        self.targetX = 0.0
+        self.targetY = 0.0
+
 
         self.loop()
 
@@ -70,8 +82,11 @@ class DBWNode(object):
             #                                                     <current linear velocity>,
             #                                                     <dbw status>,
             #                                                     <any other argument you need>)
-            # if <dbw is enabled>:
-            #   self.publish(throttle, brake, steer)
+            throttle, brake, steer = self.controller.control(dbw = self.dbw_enabled,
+                                                            tx = self.targetX,
+                                                            ty = self.targetY)
+            if self.dbw_enabled:
+                self.publish(throttle, brake, steer)
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
@@ -91,6 +106,21 @@ class DBWNode(object):
         bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
+
+    # Valtgun 20.08.2017 - callback for Drive by wire enabled topic subscriber
+    def dbw_cb(self, msg):
+        if (msg.data == True):
+            self.dbw_enabled = True
+        else:
+            self.dbw_enabled = False
+        pass
+
+    # Valtgun 20.08.2017 - callback for receiving next waypoint information
+    def waypoints_cb(self, waypoints):
+        self.targetX = waypoints.waypoints[1].pose.pose.position.x
+        self.targetY = waypoints.waypoints[1].pose.pose.position.y
+        pass
+
 
 
 if __name__ == '__main__':
