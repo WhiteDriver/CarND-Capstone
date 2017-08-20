@@ -69,6 +69,15 @@ class DBWNode(object):
         self.targetX = 0.0
         self.targetY = 0.0
 
+        # Valtgun 20.08.2017 - subscribe to current pose
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
+        self.poseX = 0.0
+        self.poseY = 0.0
+        self.pose_orient = 0.0 # after conversion to euler
+        # values in degrees (-180 to +180)
+        # 0 aligned with X axis (in front of car initailly)
+        # +90 is to the left of inital car position
+
 
         self.loop()
 
@@ -84,7 +93,10 @@ class DBWNode(object):
             #                                                     <any other argument you need>)
             throttle, brake, steer = self.controller.control(dbw = self.dbw_enabled,
                                                             tx = self.targetX,
-                                                            ty = self.targetY)
+                                                            ty = self.targetY,
+                                                            px = self.poseX,
+                                                            py = self.poseY,
+                                                            pt = self.pose_orient)
             if self.dbw_enabled:
                 self.publish(throttle, brake, steer)
             rate.sleep()
@@ -117,10 +129,38 @@ class DBWNode(object):
 
     # Valtgun 20.08.2017 - callback for receiving next waypoint information
     def waypoints_cb(self, waypoints):
-        self.targetX = waypoints.waypoints[1].pose.pose.position.x
-        self.targetY = waypoints.waypoints[1].pose.pose.position.y
+        # TODO: Takes 10 waypoints ahead, need to make more cleaver follower
+        self.targetX = waypoints.waypoints[10].pose.pose.position.x
+        self.targetY = waypoints.waypoints[10].pose.pose.position.y
         pass
 
+    # Valtgun 20.08.2017 - callback for receiving next waypoint information
+    def pose_cb(self, msg):
+        self.poseX = msg.pose.position.x
+        self.poseY = msg.pose.position.y
+        orient = msg.pose.orientation
+        X, Y, Z = self.Quaternion_toEulerianAngle(orient.x, orient.y, orient.z, orient.w)
+        self.pose_orient = Z
+        #rospy.logwarn('Pose theta: ' + str(self.pose_orient))
+        pass
+
+    # Valtgun 20.08.2017 - helper to transform pose quaterion to euler
+    # https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Quaternion_to_Euler_Angles_Conversion
+    def Quaternion_toEulerianAngle(self, x, y, z, w):
+        ysqr = y*y
+        t0 = +2.0 * (w * x + y*z)
+        t1 = +1.0 - 2.0 * (x*x + ysqr)
+        X = math.degrees(math.atan2(t0, t1))
+
+        t2 = +2.0 * (w*y - z*x)
+        t2 =  1 if t2 > 1 else t2
+        t2 = -1 if t2 < -1 else t2
+        Y = math.degrees(math.asin(t2))
+
+        t3 = +2.0 * (w * z + x*y)
+        t4 = +1.0 - 2.0 * (ysqr + z*z)
+        Z = math.degrees(math.atan2(t3, t4))
+        return X, Y, Z
 
 
 if __name__ == '__main__':

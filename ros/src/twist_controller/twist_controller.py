@@ -1,3 +1,5 @@
+from math import atan2, degrees
+import rospy
 
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
@@ -15,6 +17,18 @@ class Controller(object):
         dbw = kwargs.get('dbw', False)
         tx = kwargs.get('tx', 0.0) # TODO change to last position
         ty = kwargs.get('ty', 0.0)
+        px = kwargs.get('px', 0.0)
+        py = kwargs.get('py', 0.0)
+        pt = kwargs.get('pt', 0.0)
+
+        # experimental code
+        # simple follower, needs improvements
+        # just checks angle with next waypoint passed in input
+        # and tries to align the car
+        #angle = degrees(atan2(-(ty-py), tx-px))
+        #delta = -angle + pt
+        #rospy.logwarn('Delta: ' + str(delta) + ' Angle: ' + str(angle) + ' Pt: ' + str(pt))
+
         if (dbw):
             throttle = 1.0
             brake = 0.0
