@@ -8,6 +8,9 @@ from styx_msgs.msg import Lane, Waypoint
 import math
 
 from twist_controller import Controller
+from yaw_controller import YawController
+from pid import PID
+import time
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
@@ -46,6 +49,10 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+        min_speed = 0.1
+        kp = 1
+        ki = 0.05
+        kd = 0
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
                                          SteeringCmd, queue_size=1)
@@ -57,6 +64,10 @@ class DBWNode(object):
         # TODO: Create `TwistController` object
         # self.controller = TwistController(<Arguments you wish to provide>)
         self.controller = Controller(max_st_angle = max_steer_angle)
+        
+        # Vishnerevsky 22.08.2017
+        self.yaw_contr = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
+        self.pid_contr = PID(kp, ki, kd)
 
         # TODO: Subscribe to all the topics you need to
         # Valtgun 20.08.2017 - subscribe to is DBW enabled topic
@@ -69,6 +80,15 @@ class DBWNode(object):
         self.targetX = 0.0
         self.targetY = 0.0
 
+        # Vishnerevsky 22.08.2017 - target speed and yaw
+        self.target_speed = 0.0
+        self.target_yaw = 0.0
+        self.cur_v = 0.0
+        # Vishnerevsky 22.08.2017 - timestamps for PID controller
+        self.previous_timestamp = rospy.get_rostime().secs
+        self.current_timestamp = 0.0
+        self.delta_time = 0.0
+
         # Valtgun 20.08.2017 - subscribe to current pose
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         self.poseX = 0.0
@@ -78,6 +98,9 @@ class DBWNode(object):
         # 0 aligned with X axis (in front of car initailly)
         # +90 is to the left of inital car position
 
+        # Vishnerevsky 22.08.2017 - subscribe to /twist_cmd
+        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.cur_vel_cb)
 
         self.loop()
 
@@ -97,8 +120,20 @@ class DBWNode(object):
                                                             px = self.poseX,
                                                             py = self.poseY,
                                                             pt = self.pose_orient)
+            # Vishnerevsky 22.08.2017:
+            steer = self.yaw_contr.get_steering(self.target_speed, self.target_yaw, self.cur_v) 
+            current_time = rospy.get_rostime()
+            current_secs = current_time.secs
+            current_nsecs = current_time.nsecs
+            self.current_timestamp = current_secs + current_nsecs/1000000000.0
+            self.delta_t = (self.current_timestamp - self.previous_timestamp)
+            self.previous_timestamp = self.current_timestamp
+            rospy.logwarn(self.delta_t)
+            PID_speed = self.pid_contr.step(self.target_speed - self.cur_v, self.delta_t)
             if self.dbw_enabled:
-                self.publish(throttle, brake, steer)
+                #self.publish(throttle, brake, steer) # Commented by Vishnerevsky 22.08.2017
+                self.publish(PID_speed, brake, steer) 
+                #rospy.logwarn("%.2f, %.2f, %.2f" % (self.cur_v, brake, steer))
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
@@ -142,6 +177,30 @@ class DBWNode(object):
         X, Y, Z = self.Quaternion_toEulerianAngle(orient.x, orient.y, orient.z, orient.w)
         self.pose_orient = Z
         #rospy.logwarn('Pose theta: ' + str(self.pose_orient))
+        # Vishnerevsky 22.08.2017:
+        #self.current_timestamp = msg.header.stamp
+        #rospy.logwarn(self.current_timestamp)
+        pass
+
+    # Vishnerevsky 22.08.2017
+    def twist_cb(self, msg):
+        #rospy.logwarn('twist_cmd received')
+        lin_x = msg.twist.linear.x
+        lin_y = msg.twist.linear.y
+        lin_z = msg.twist.linear.z
+        ang_x = msg.twist.angular.x
+        ang_y = msg.twist.angular.y
+        ang_z = msg.twist.angular.z
+        #rospy.logwarn(lin_x)
+        #rospy.logwarn("%.2f, %.2f, %.2f" % (lin_x, lin_y, lin_z))
+        #rospy.logwarn("%.2f, %.2f, %.2f" % (ang_x, ang_y, ang_z))
+        self.target_speed = lin_x
+        self.target_yaw = 100*ang_z
+        pass
+
+    # Vishnerevsky 22.08.2017
+    def cur_vel_cb(self, msg):
+        self.cur_v = msg.twist.linear.x
         pass
 
     # Valtgun 20.08.2017 - helper to transform pose quaterion to euler
