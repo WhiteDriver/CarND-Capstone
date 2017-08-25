@@ -55,16 +55,16 @@ class WaypointUpdater(object):
             #rospy.logwarn('GO_555!!!')
             self.pose = msg.pose
             waypoints = self.last_waypoints.waypoints
-            lane.header.stamp = rospy.Time.now()
+            self.lane.header.stamp = rospy.Time.now()
             start_point = self.closest_waypoint(self.pose, waypoints)
             all_waypoints = waypoints + waypoints[:LOOKAHEAD_WPS]
-            lane.waypoints = all_waypoints[start_point-self.points_in_back: start_point-self.points_in_back + LOOKAHEAD_WPS]         
+            self.lane.waypoints = all_waypoints[start_point-self.points_in_back: start_point-self.points_in_back + LOOKAHEAD_WPS]         
 
-            for index in range(len(lane.waypoints)):
+            for index in range(len(self.lane.waypoints)):
 
-                lane.waypoints[index].twist.twist.linear.x = 10 # Meters per second
+                self.lane.waypoints[index].twist.twist.linear.x = 10 # Meters per second
 
-            self.final_waypoints_pub.publish(lane)
+            self.final_waypoints_pub.publish(self.lane)
 
     def waypoints_cb(self, lane):
         # TODO: Implement
