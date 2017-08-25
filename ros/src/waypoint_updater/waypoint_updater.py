@@ -60,9 +60,9 @@ class WaypointUpdater(object):
             all_waypoints = waypoints + waypoints[:LOOKAHEAD_WPS]
             self.lane.waypoints = all_waypoints[start_point-self.points_in_back: start_point-self.points_in_back + LOOKAHEAD_WPS]         
 
-            for index in range(len(self.lane.waypoints)):
+            #for index in range(len(self.lane.waypoints)):
 
-                self.lane.waypoints[index].twist.twist.linear.x = 10 # Meters per second
+            #    self.lane.waypoints[index].twist.twist.linear.x = 20 # Meters per second
 
             self.final_waypoints_pub.publish(self.lane)
 
@@ -77,16 +77,18 @@ class WaypointUpdater(object):
 	    # Omar 25.08.2017 Calculate the closest Waypoint to the current car position
 	    Closest_TrafficLight = self.closest_waypoint(self.pose, msg.lights)
 	    # Omar 25.08.2017 Check if the closest Traffic light is red
+            #rospy.logwarn(msg.lights[Closest_TrafficLight].state)         #LOGWARN!!!!!!
             if msg.lights[Closest_TrafficLight].state == 0:
                 # Omar 25.08.2017 Find the waypoints between the car and the Traffic Sign and set their velocity to 0
                 for index in range(len(self.lane.waypoints)):
                     #if self.distance(self.pose.position, self.lane.waypoints[index].pose.pose.position) < self.distance(self.pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
-                    self.set_waypoint_velocity(self.lane.waypoints, index, 0)
+                    #self.set_waypoint_velocity(self.lane.waypoints, index, 0)
+                    self.lane.waypoints[index].twist.twist.linear.x = 0.0
             else:
                 for index in range(len(self.lane.waypoints)):
                     #if self.distance(self.pose.position, self.lane.waypoints[index].pose.pose.position) < self.distance(self.pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
-                    self.set_waypoint_velocity(self.lane.waypoints, index, 20) 
-                	
+                    #self.set_waypoint_velocity(self.lane.waypoints, index, 20)    	
+                    self.lane.waypoints[index].twist.twist.linear.x = 20.0
      
 
     def obstacle_cb(self, msg):
