@@ -65,9 +65,12 @@ class DBWNode(object):
         self.current_timestamp = 0.0
         self.delta_time = 0.0
         
-        # Vishnerevsky 24.08.2017
-        self.V_pid = PID(kp=1.0, ki=0.02, kd=0, mn=decel_limit, mx=accel_limit)
+        # Vishnerevsky 25.08.2017
+        self.V_pid = PID(kp=1000.0, ki=5000.0, kd=100.0, mn=decel_limit*10.0, mx=accel_limit*10.0)
         self.S_pid = PID(kp=0.2, ki=0.001, kd=0.5)
+
+        # Vishnerevsky 25.08.2017
+        self.previous_V_ref = 0.0
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
                                          SteeringCmd, queue_size=1)
@@ -112,11 +115,18 @@ class DBWNode(object):
                 self.current_timestamp = current_secs + current_nsecs/1000000000.0
                 self.delta_t = (self.current_timestamp - self.previous_timestamp)
                 self.previous_timestamp = self.current_timestamp
-                rospy.logwarn('GO7777!!!')
+                #rospy.logwarn('GO7777!!!')
 
-                # Vishnerevsky 24.08.2017:
+                # Vishnerevsky 25.08.2017:
                 # Car Velocity Error:
-                VELE = self.final_waypoints[0].twist.twist.linear.x - self.cur_v
+                V_reference = self.final_waypoints[0].twist.twist.linear.x
+
+                if ((V_reference == 0.0) or (V_reference == 20.0)): # To beat 11.1112 appearance
+                    self.previous_V_ref = V_reference
+                else:
+                    V_reference = self.previous_V_ref
+                rospy.logwarn(V_reference) 
+                VELE = V_reference - self.cur_v
                 # Cross Track Error:
                 CTE = self.get_CTE(self.final_waypoints, self.current_pose)
                 #if (CTE < -2.0):
@@ -125,11 +135,11 @@ class DBWNode(object):
                 #    CTE = 2.0
                 #throttle, brake, steer = self.controller.control(
                 #    VELE, CTE, self.delta_t)
-                rospy.logwarn(CTE)
+                #rospy.logwarn(CTE)
                 throttle = self.V_pid.step(VELE, self.delta_t)
                 brake = 0
                 if throttle < 0:
-                    brake = throttle
+                    brake = -1.0 * throttle
                     throttle = 0
                 steering = self.S_pid.step(CTE, self.delta_t)
                 self.publish(throttle, brake, steering)
