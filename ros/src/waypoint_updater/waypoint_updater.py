@@ -71,15 +71,16 @@ class WaypointUpdater(object):
         self.last_waypoints = Lane
 
     def traffic_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
-	# Omar 25.08.2017 Calculate the closest Waypoint to the current car position
-	Closest_TrafficLight = self.closest_waypoint(self.pose, msg.lights)
-	# Omar 25.08.2017 Check if the closest Traffic light is red
-        if msg.lights[Closest_TrafficLight].state == 0:
-		# Omar 25.08.2017 Find the waypoints between the car and the Traffic Sign and set their velocity to 0
-		for index in range(len(self.lane.waypoints)):
-			if self.distance(self.pose.position, self.lane.waypoints[index].pose.pose.position) < self.distance(self.pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
-				self.set_waypoint_velocity(self.lane.waypoints, index, 0)
+        if self.pose is not None:
+            # TODO: Callback for /traffic_waypoint message. Implement
+	    # Omar 25.08.2017 Calculate the closest Waypoint to the current car position
+	    Closest_TrafficLight = self.closest_waypoint(self.pose, msg.lights)
+	    # Omar 25.08.2017 Check if the closest Traffic light is red
+            if msg.lights[Closest_TrafficLight].state == 0:
+                # Omar 25.08.2017 Find the waypoints between the car and the Traffic Sign and set their velocity to 0
+                for index in range(len(self.lane.waypoints)):
+                    if self.distance(self.pose.position, self.lane.waypoints[index].pose.pose.position) < self.distance(self.pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
+                        self.set_waypoint_velocity(self.lane.waypoints, index, 0)
                 	
      
 
