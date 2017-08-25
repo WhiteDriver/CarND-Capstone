@@ -96,11 +96,11 @@ class WaypointUpdater(object):
 	waypoints[waypoint].twist.twist.linear.x = velocity
         
 
-    def closest_waypoint(self, pose, waypoints):
+    def closest_waypoint(self, Pose, waypoints):
         best_waypoint = 0
-        min_dist = self.distance(pose.position, waypoints[0].pose.pose.position)
+        min_dist = self.distance(Pose.position, waypoints[0].pose.pose.position)
         for i, point in enumerate(waypoints):
-            dist = self.distance(pose.position, point.pose.pose.position)
+            dist = self.distance(Pose.position, point.pose.pose.position)
             if dist < min_dist:
                 best_waypoint = i
                 min_dist = dist
