@@ -66,9 +66,9 @@ class WaypointUpdater(object):
 
             self.final_waypoints_pub.publish(self.lane)
 
-    def waypoints_cb(self, lane):
+    def waypoints_cb(self, Lane):
         # TODO: Implement
-        self.last_waypoints = lane
+        self.last_waypoints = Lane
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
