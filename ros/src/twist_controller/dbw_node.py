@@ -66,7 +66,7 @@ class DBWNode(object):
         self.delta_time = 0.0
         
         # Vishnerevsky 24.08.2017
-        self.V_pid = PID(kp=0.4, ki=0.0, kd=0, mn=decel_limit, mx=accel_limit)
+        self.V_pid = PID(kp=1.0, ki=0.02, kd=0, mn=decel_limit, mx=accel_limit)
         self.S_pid = PID(kp=0.2, ki=0.001, kd=0.5)
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
@@ -119,10 +119,10 @@ class DBWNode(object):
                 VELE = self.final_waypoints[0].twist.twist.linear.x - self.cur_v
                 # Cross Track Error:
                 CTE = self.get_CTE(self.final_waypoints, self.current_pose)
-                if (CTE < -2.0):
-                    CTE = -2.0
-                if (CTE > 2.0):
-                    CTE = 2.0
+                #if (CTE < -2.0):
+                #    CTE = -2.0
+                #if (CTE > 2.0):
+                #    CTE = 2.0
                 #throttle, brake, steer = self.controller.control(
                 #    VELE, CTE, self.delta_t)
                 rospy.logwarn(CTE)
@@ -202,7 +202,38 @@ class DBWNode(object):
 
     # Vishnerevsky 24.08.2017
     def get_CTE(self, waypoints, current_pose):
-
+        # Vishnerevsky 25.05.2017 - Get waypoints coordinates
+        points_x = [i.pose.pose.position.x for i in waypoints]
+        points_y = [i.pose.pose.position.y for i in waypoints] 
+        # Decrease length of the lists. We need only 20 - 30 waypoints:
+        points_x = points_x[0:30]
+        points_y = points_y[0:30]
+        # Lest transform our points into the vehicle coordinate system:
+        points_x_car = []
+        points_y_car = []
+        # From quaternion to Euler angles:
+        x = current_pose.orientation.x
+        y = current_pose.orientation.y
+        z = current_pose.orientation.z
+        w = current_pose.orientation.w
+        # Determine car heading:
+        t3 = +2.0 * (w * z + x*y)
+        t4 = +1.0 - 2.0 * (y*y + z*z)
+        theta = math.degrees(math.atan2(t3, t4))
+        # Perform coordinate transformation:
+        for i in range(len(points_x)):
+            Xcar = (points_y[i]-current_pose.position.y)*math.sin(math.radians(theta))-(current_pose.position.x-points_x[i])*math.cos(math.radians(theta))
+            Ycar = (points_y[i]-current_pose.position.y)*math.cos(math.radians(theta))-(points_x[i]-current_pose.position.x)*math.sin(math.radians(theta)) 
+            points_x_car.append(Xcar) 
+            points_y_car.append(Ycar) 
+        # Interpolate points in the vehicle coordinate system:
+        coeff_xy = list(reversed(np.polyfit(points_x_car, points_y_car, 3))) 
+        dist_y = 0
+        for p, coeff in enumerate(coeff_xy):
+            dist_y += coeff * (2.0 ** p)         
+               
+        return dist_y
+        '''
         # We can get points coordinates in this way:
         #points_x = []
         #points_y = []
@@ -269,7 +300,7 @@ class DBWNode(object):
         if (Ycar < 0):
             d = d * -1.0
         return d
-
+        '''
 
 if __name__ == '__main__':
     DBWNode()
