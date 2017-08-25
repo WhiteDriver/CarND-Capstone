@@ -33,12 +33,12 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
-		# Omar 25.08.2017 Subscribed to Traffic lights waypoints
+	# Omar 25.08.2017 Subscribed to Traffic lights waypoints
         rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-		# Omar 25.08.2017 add a variable for the car current position
-		self.pose = None
+	# Omar 25.08.2017 add a variable for the car current position
+	self.pose = None
         # Omar 25.08.2017 add a variable lane
-		self.lane = Lane()
+	self.lane = Lane()
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -72,14 +72,14 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
-		# Omar 25.08.2017 Calculate the closest Waypoint to the current car position
-		Closest_TrafficLight = self.closest_waypoint(pose, msg.lights)
-		# Omar 25.08.2017 Check if the closest Traffic light is red
+	# Omar 25.08.2017 Calculate the closest Waypoint to the current car position
+	Closest_TrafficLight = self.closest_waypoint(pose, msg.lights)
+	# Omar 25.08.2017 Check if the closest Traffic light is red
         if msg.lights[Closest_TrafficLight].state == 0:
-	    # Omar 25.08.2017 Find the waypoints between the car and the Traffic Sign and set their velocity to 0
-			for index in range(len(lane.waypoints)):
-				if self.distance(pose.position, lane.waypoints[index].pose.pose.position) < self.distance(pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
-                    self.set_waypoint_velocity(lane.waypoints, index, 0)
+		# Omar 25.08.2017 Find the waypoints between the car and the Traffic Sign and set their velocity to 0
+		for index in range(len(lane.waypoints)):
+			if self.distance(pose.position, lane.waypoints[index].pose.pose.position) < self.distance(pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
+				self.set_waypoint_velocity(lane.waypoints, index, 0)
                 	
      
 
