@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped, PoseStamped
 from styx_msgs.msg import Lane, Waypoint
@@ -66,7 +66,8 @@ class DBWNode(object):
         self.delta_time = 0.0
         
         # Vishnerevsky 25.08.2017
-        self.V_pid = PID(kp=1000.0, ki=5000.0, kd=100.0, mn=decel_limit*10.0, mx=accel_limit*10.0)
+        #self.V_pid = PID(kp=1000.0, ki=5000.0, kd=100.0, mn=decel_limit*10.0, mx=accel_limit*10.0)
+        self.V_pid = PID(kp=100.0, ki=0.0, kd=0.0)
         self.S_pid = PID(kp=0.2, ki=0.001, kd=0.5)
 
         # Vishnerevsky 25.08.2017
@@ -88,6 +89,11 @@ class DBWNode(object):
         rospy.Subscriber('/current_velocity', TwistStamped, self.cur_vel_cb, queue_size=1)
         rospy.Subscriber('/current_pose', PoseStamped, self.current_pose_cb, queue_size=1)
         rospy.Subscriber('/final_waypoints', Lane, self.final_waypoints_cb)
+
+        # Vishnerevsky 26.08.2017
+        # Create subscriber for velocity reference
+        rospy.Subscriber('velocity_reference', Float64, self.velocity_cb)
+        self.V_reference = 0.0
 
         self.loop()
 
@@ -119,27 +125,22 @@ class DBWNode(object):
 
                 # Vishnerevsky 25.08.2017:
                 # Car Velocity Error:
-                V_reference = self.final_waypoints[0].twist.twist.linear.x
+                #self.V_reference = self.final_waypoints[10].twist.twist.linear.x
 
-                if ((V_reference == 0.0) or (V_reference == 20.0)): # To beat 11.1112 appearance
-                    self.previous_V_ref = V_reference
-                else:
-                    V_reference = self.previous_V_ref
-                rospy.logwarn(V_reference) 
-                VELE = V_reference - self.cur_v
+                #if ((self.V_reference == 0.0) or (self.V_reference == 20.0)): # To beat 11.1112 appearance
+                #    self.previous_V_ref = self.V_reference
+                #else:
+                #    self.V_reference = self.previous_V_ref
+
+                #rospy.logwarn(V_reference) 
+                VELE = self.V_reference - self.cur_v
                 # Cross Track Error:
                 CTE = self.get_CTE(self.final_waypoints, self.current_pose)
-                #if (CTE < -2.0):
-                #    CTE = -2.0
-                #if (CTE > 2.0):
-                #    CTE = 2.0
-                #throttle, brake, steer = self.controller.control(
-                #    VELE, CTE, self.delta_t)
                 #rospy.logwarn(CTE)
                 throttle = self.V_pid.step(VELE, self.delta_t)
                 brake = 0
                 if throttle < 0:
-                    brake = -1.0 * throttle
+                    brake = -10.0 * throttle
                     throttle = 0
                 steering = self.S_pid.step(CTE, self.delta_t)
                 self.publish(throttle, brake, steering)
@@ -176,21 +177,28 @@ class DBWNode(object):
             self.dbw_enabled = True
         else:
             self.dbw_enabled = False
-        if self.dbw_enabled is True:
-            self.V_pid.reset()
-            self.S_pid.reset()
+        #if self.dbw_enabled is True:
+            #self.V_pid.reset()
+            #self.S_pid.reset()
 
     #def current_velocity_cb(self, msg):
     #    self.current_velocity = msg.twist
+
     # Vishnerevsky 22.08.2017
     def cur_vel_cb(self, msg):
         self.cur_v = msg.twist.linear.x
+        #rospy.logwarn(self.cur_v)
 
     def current_pose_cb(self, msg):
         self.current_pose = msg.pose
 
     def final_waypoints_cb(self, msg):
         self.final_waypoints = msg.waypoints
+
+    # Vishnerevsky 26.08.2017
+    def velocity_cb(self, msg):
+        self.V_reference = msg.data
+        rospy.logwarn(self.V_reference)
 
     # Valtgun 20.08.2017 - helper to transform pose quaterion to euler
     # https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Quaternion_to_Euler_Angles_Conversion
