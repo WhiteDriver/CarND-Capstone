@@ -78,7 +78,8 @@ class WaypointUpdater(object):
 	    Closest_TrafficLight = self.closest_waypoint(self.pose, msg.lights)
 	    # Omar 25.08.2017 Check if the closest Traffic light is red
             #rospy.logwarn(msg.lights[Closest_TrafficLight].state)         #LOGWARN!!!!!!
-            if msg.lights[Closest_TrafficLight].state == 0:
+	    # Omar 26.08.2017 Check if the closest Traffic light is red and the distance is less than 3m to the car
+            if msg.lights[Closest_TrafficLight].state == 0 and self.distance(self.pose.position, msg.lights[Closest_TrafficLight].pose.pose.position) < 3:
                 # Omar 25.08.2017 Find the waypoints between the car and the Traffic Sign and set their velocity to 0
                 for index in range(len(self.lane.waypoints)):
                     #if self.distance(self.pose.position, self.lane.waypoints[index].pose.pose.position) < self.distance(self.pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
