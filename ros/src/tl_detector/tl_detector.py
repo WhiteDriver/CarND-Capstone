@@ -10,6 +10,7 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 from traffic_light_config import config
+import math
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -32,7 +33,9 @@ class TLDetector(object):
         help you work on another single component of the node. This topic won't be available when
         testing your solution in real life so don't rely on it in the final submission.
         '''
+        ''' Commented to not use
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
+        '''
         sub6 = rospy.Subscriber('/camera/image_raw', Image, self.image_cb)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
@@ -46,6 +49,10 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
+        self.best_waypoint = 0
+        self.last_car_position = 0
+        self.last_light_pos_wp = []
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -54,9 +61,10 @@ class TLDetector(object):
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
 
+    ''' Commented to not use
     def traffic_cb(self, msg):
         self.lights = msg.lights
-
+    '''
     def image_cb(self, msg):
         """Identifies red lights in the incoming camera image and publishes the index
             of the waypoint closest to the red light to /traffic_waypoint
@@ -97,9 +105,22 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
-        return 0
+        best_waypoint = self.best_waypoint
+        if self.waypoints is not None:
+            waypoints = self.waypoints.waypoints
+            min_dist = self.distance(pose.position, waypoints[0].pose.pose.position)
+            for i, point in enumerate(waypoints):
+                dist = self.distance(pose.position, point.pose.pose.position)
+                if dist < min_dist:
+                    best_waypoint = i
+                    min_dist = dist
+            self.best_waypoint = best_waypoint
+            return best_waypoint
 
+    def distance(self, p1, p2):
+        delta_x = p1.x - p2.x
+        delta_y = p1.y - p2.y
+        return math.sqrt(delta_x*delta_x + delta_y*delta_y)
 
     def project_to_image_plane(self, point_in_world):
         """Project point from 3D world coordinates to 2D camera image location
@@ -173,16 +194,52 @@ class TLDetector(object):
         """
         light = None
         light_positions = config.light_positions
+
+        # Valtgun attribute lights to waypoints
+        light_pos_wp = []
+        if self.waypoints is not None:
+            wp = self.waypoints
+            for i in range(len(light_positions)):
+                l_pos = self.get_closest_waypoint_light(wp, light_positions[i])
+                light_pos_wp.append(l_pos)
+            self.last_light_pos_wp = light_pos_wp
+        else:
+            light_pos_wp = self.last_light_pos_wp
+
         if(self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
+            if car_position is not None:
+                self.last_car_position = car_position
 
-        #TODO find the closest visible traffic light (if one exists)
+        # valtgun get id of next light
+        if (self.last_car_position > max(light_pos_wp)):
+             light = min(light_pos_wp)
+        else:
+            light_delta = light_pos_wp[:]
+            light_delta[:] = [x - self.last_car_position for x in light_delta]
+            light = min(i for i in light_delta if i > 0) + self.last_car_position
 
         if light:
             state = self.get_light_state(light)
             return light_wp, state
         self.waypoints = None
         return -1, TrafficLight.UNKNOWN
+
+    def get_closest_waypoint_light(self, wp, l_pos):
+        best_waypoint = None
+        waypoints = wp.waypoints
+        min_dist = self.distance_light(l_pos, waypoints[0].pose.pose.position)
+        for i, point in enumerate(waypoints):
+            dist = self.distance_light(l_pos, point.pose.pose.position)
+            if dist < min_dist:
+                best_waypoint = i
+                min_dist = dist
+        return best_waypoint
+
+    def distance_light(self, l_p, wp):
+        delta_x = l_p[0] - wp.x
+        delta_y = l_p[1] - wp.y
+        return math.sqrt(delta_x*delta_x + delta_y*delta_y)
 
 if __name__ == '__main__':
     try:
