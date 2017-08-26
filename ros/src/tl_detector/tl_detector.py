@@ -11,6 +11,7 @@ import tf
 import cv2
 from traffic_light_config import config
 import math
+import numpy as np
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -39,6 +40,8 @@ class TLDetector(object):
         sub6 = rospy.Subscriber('/camera/image_raw', Image, self.image_cb)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
+
+        self.deb_img = rospy.Publisher('/deb_img', Image, queue_size=1)
 
         self.bridge = CvBridge()
         self.light_classifier = TLClassifier()
@@ -140,6 +143,14 @@ class TLDetector(object):
         image_width = config.camera_info.image_width
         image_height = config.camera_info.image_height
 
+        cord_x = point_in_world[0]
+        cord_y = point_in_world[1]
+
+
+        rospy.logerr("x: " + str(cord_x) + " y: " + str(cord_y))
+        rospy.logerr("fx: " + str(fx) + " fy: " + str(fy))
+        rospy.logerr("image_width: " + str(image_width) + " image_height: " + str(image_height))
+
         # get transform between pose of camera and world frame
         trans = None
         try:
@@ -153,9 +164,34 @@ class TLDetector(object):
             rospy.logerr("Failed to find camera to map transform")
 
         #TODO Use tranform and rotation to calculate 2D position of light in image
+        #http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+        #cv2.projectPoints(objectPoints, rvec, tvec, cameraMatrix, distCoeffs[, imagePoints[, jacobian[, aspectRatio]]]) -> imagePoints, jacobian
+        #Projects 3D points to an image plane
 
-        x = 0
-        y = 0
+        rospy.logerr("trans: " + str(trans) + " rot: " + str(rot))
+
+        objectPoints = np.array([[point_in_world[0], point_in_world[1], 5.868888]]) # TODO: Check if this is valid in real scenario
+        # taken from: rostopic echo /vehicle/traffic_lights
+
+        rvec = tf.transformations.quaternion_matrix(rot)[:3, :3]
+        tvec = np.array(trans)
+
+        cameraMatrix = np.array([[fx,  0, image_width/2],
+                                [ 0, fy, image_height/2],
+                                [ 0,  0,  1]])
+        distCoeffs = None
+
+        rospy.logerr("objectPoints: " + str(objectPoints))
+        rospy.logerr("rvec: " + str(rvec))
+        rospy.logerr("tvec: " + str(tvec))
+        rospy.logerr("cameraMatrix: " + str(cameraMatrix))
+
+        ret, _ = cv2.projectPoints(objectPoints, rvec, tvec, cameraMatrix, distCoeffs)
+
+        x = int(ret[0,0,0])
+        y = int(ret[0,0,1])
+
+        rospy.logerr("ret: " + str(ret) + " x: " + str(x) + " x: " + str(x))
 
         return (x, y)
 
@@ -176,10 +212,21 @@ class TLDetector(object):
         self.camera_image.encoding = "rgb8"
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
-        x, y = self.project_to_image_plane(light.pose.pose.position)
+        x, y = self.project_to_image_plane(light)
 
         #TODO use light location to zoom in on traffic light in image
+        if ((x is None) or (y is None) or (x < 0) or (y<0) or
+            (x>config.camera_info.image_width) or (y>config.camera_info.image_height)):
+            return TrafficLight.UNKNOWN
+        else:
+            left = max(0, x - 50)
+            right = min(config.camera_info.image_width, x + 50)
+            top = max(0, y - 50)
+            bottom = min(config.camera_info.image_height, y + 50)
+            crop = cv_image[top:bottom, left:right]
 
+            self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
+            #rosrun image_view image_view image:=/deb_img
         #Get classification
         return self.light_classifier.get_classification(cv_image)
 
@@ -213,15 +260,18 @@ class TLDetector(object):
 
         # valtgun get id of next light
         if (self.last_car_position > max(light_pos_wp)):
-             light = min(light_pos_wp)
+             light_num_wp = min(light_pos_wp)
         else:
             light_delta = light_pos_wp[:]
             light_delta[:] = [x - self.last_car_position for x in light_delta]
-            light = min(i for i in light_delta if i > 0) + self.last_car_position
+            light_num_wp = min(i for i in light_delta if i > 0) + self.last_car_position
+
+        light_idx = light_pos_wp.index(light_num_wp)
+        light = light_positions[light_idx]
 
         if light:
             state = self.get_light_state(light)
-            return light_wp, state
+            return light, state
         self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 

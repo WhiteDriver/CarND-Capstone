@@ -1,4 +1,6 @@
 from styx_msgs.msg import TrafficLight
+import numpy as np
+import cv2
 
 class TLClassifier(object):
     def __init__(self):
@@ -15,7 +17,7 @@ class TLClassifier(object):
             0 (red / yellow) or 2 (green)
             Not implented returns: 1 (yellow), 4 (unknown)
         """
-        
+
         # Manually set boundaries for colors
         boundaries = [
             ([0, 0, 80], [50, 130, 255]), # Red
@@ -30,8 +32,8 @@ class TLClassifier(object):
             upper = np.array(upper, dtype = "uint8")
 
             # Check for boundary colors in images
-            mask = cv2.inRange(img, lower, upper)
-            output = cv2.bitwise_and(img, img, mask=mask)
+            mask = cv2.inRange(image, lower, upper)
+            output = cv2.bitwise_and(image, image, mask=mask)
 
             # Sum the masks and save to result array
             # (E.g Red light should have more red than green in image)
