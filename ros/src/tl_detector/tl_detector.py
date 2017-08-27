@@ -56,6 +56,10 @@ class TLDetector(object):
         self.last_car_position = 0
         self.last_light_pos_wp = []
 
+        # Vishnerevsky 27.08.2017:
+        self.distance_to_light = 1000.0
+        self.deviation_of_light = 0.0
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -183,9 +187,13 @@ class TLDetector(object):
 
         Xcar = (cord_y-self.pose.pose.position.y)*math.sin(math.radians(theta))-(self.pose.pose.position.x-cord_x)*math.cos(math.radians(theta))
         Ycar = (cord_y-self.pose.pose.position.y)*math.cos(math.radians(theta))-(cord_x-self.pose.pose.position.x)*math.sin(math.radians(theta))
+ 
+        # Vishnerevsky 27.08.2017:
+        self.distance_to_light = Xcar
+        self.deviation_of_light = Ycar
 
         #rospy.logerr("trans: " + str(trans) + " rot: " + str(rot))
-        rospy.logerr("Xcar: " + str(Xcar) + " Ycar: " + str(Ycar))
+        rospy.logerr("Xcar: " + str(Xcar) + " Ycar: " + str(Ycar)) #Commented by Vishnerevsky 27.08.2017
 
         #https://www.scratchapixel.com/lessons/3d-basic-rendering/computing-pixel-coordinates-of-3d-point/mathematics-computing-2d-coordinates-of-3d-points
         #camX = float(Ycar)
@@ -243,14 +251,23 @@ class TLDetector(object):
             (x>config.camera_info.image_width) or (y>config.camera_info.image_height)):
             return TrafficLight.UNKNOWN
         else:
-            left = max(0, x - 50)
-            right = min(config.camera_info.image_width, x + 50)
-            top = max(0, y - 50)
-            bottom = min(config.camera_info.image_height, y + 50)
+            #left = max(0, x - 50)
+            #right = min(config.camera_info.image_width, x + 50)
+            left = max(0, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
+            right = min(config.camera_info.image_width/2 - int(self.deviation_of_light)*10+200, config.camera_info.image_width) # Vishnerevsky 27.08.2017
+            #top = max(0, y)
+            #bottom = min(config.camera_info.image_height, y + 200)
+            vertical = int(y - (45.0-self.distance_to_light)*150.0/35.0)
+            if vertical<0:
+                vertical = 0
+            top = min(vertical, config.camera_info.image_height-1)
+            bottom = min(300 + vertical, config.camera_info.image_height)
             crop = cv_image[top:bottom, left:right]
+            # Vishnerevsky 27.08.2017
+            #crop = cv_image
 
             self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
-            #rosrun image_view image_view image:=/deb_img
+            #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Get classification
         return self.light_classifier.get_classification(cv_image)
 
