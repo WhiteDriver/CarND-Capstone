@@ -147,9 +147,9 @@ class TLDetector(object):
         cord_y = point_in_world[1]
 
 
-        rospy.logerr("x: " + str(cord_x) + " y: " + str(cord_y))
-        rospy.logerr("fx: " + str(fx) + " fy: " + str(fy))
-        rospy.logerr("image_width: " + str(image_width) + " image_height: " + str(image_height))
+        #rospy.logerr("x: " + str(cord_x) + " y: " + str(cord_y))
+        #rospy.logerr("fx: " + str(fx) + " fy: " + str(fy))
+        #rospy.logerr("image_width: " + str(image_width) + " image_height: " + str(image_height))
 
         # get transform between pose of camera and world frame
         trans = None
@@ -163,35 +163,59 @@ class TLDetector(object):
         except (tf.Exception, tf.LookupException, tf.ConnectivityException):
             rospy.logerr("Failed to find camera to map transform")
 
-        #TODO Use tranform and rotation to calculate 2D position of light in image
+        #TODO Use trasnform and rotation to calculate 2D position of light in image
         #http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
         #cv2.projectPoints(objectPoints, rvec, tvec, cameraMatrix, distCoeffs[, imagePoints[, jacobian[, aspectRatio]]]) -> imagePoints, jacobian
         #Projects 3D points to an image plane
 
-        rospy.logerr("trans: " + str(trans) + " rot: " + str(rot))
+        '''
+        convert light to car cordinates
+        '''
+        # From quaternion to Euler angles:
+        x = self.pose.pose.orientation.x
+        y = self.pose.pose.orientation.y
+        z = self.pose.pose.orientation.z
+        w = self.pose.pose.orientation.w
+        # Determine car heading:
+        t3 = +2.0 * (w * z + x*y)
+        t4 = +1.0 - 2.0 * (y*y + z*z)
+        theta = math.degrees(math.atan2(t3, t4))
 
-        objectPoints = np.array([[point_in_world[0], point_in_world[1], 5.868888]]) # TODO: Check if this is valid in real scenario
+        Xcar = (cord_y-self.pose.pose.position.y)*math.sin(math.radians(theta))-(self.pose.pose.position.x-cord_x)*math.cos(math.radians(theta))
+        Ycar = (cord_y-self.pose.pose.position.y)*math.cos(math.radians(theta))-(cord_x-self.pose.pose.position.x)*math.sin(math.radians(theta))
+
+        #rospy.logerr("trans: " + str(trans) + " rot: " + str(rot))
+        rospy.logerr("Xcar: " + str(Xcar) + " Ycar: " + str(Ycar))
+
+        #https://www.scratchapixel.com/lessons/3d-basic-rendering/computing-pixel-coordinates-of-3d-point/mathematics-computing-2d-coordinates-of-3d-points
+        #camX = float(Ycar)
+        #camY = 0.0
+        #camZ = float(-Xcar)
+        objectPoints = np.array([[float(Xcar), float(Ycar), 0.0]], dtype=np.float32)
+        #objectPoints = np.array([[float(Ycar), 0, float(Xcar)]]) #-5.868888
+        #objectPoints = np.array([[point_in_world[0], point_in_world[1], 5.868888]]) # TODO: Check if this is valid in real scenario
         # taken from: rostopic echo /vehicle/traffic_lights
 
-        rvec = tf.transformations.quaternion_matrix(rot)[:3, :3]
-        tvec = np.array(trans)
+        #rvec = tf.transformations.quaternion_matrix(rot)[:3, :3]
+        #tvec = np.array(trans)
+        rvec = (0,0,0)
+        tvec = (0,0,0)
 
         cameraMatrix = np.array([[fx,  0, image_width/2],
                                 [ 0, fy, image_height/2],
                                 [ 0,  0,  1]])
         distCoeffs = None
 
-        rospy.logerr("objectPoints: " + str(objectPoints))
-        rospy.logerr("rvec: " + str(rvec))
-        rospy.logerr("tvec: " + str(tvec))
-        rospy.logerr("cameraMatrix: " + str(cameraMatrix))
+        #rospy.logerr("objectPoints: " + str(objectPoints))
+        #rospy.logerr("rvec: " + str(rvec))
+        #rospy.logerr("tvec: " + str(tvec))
+        #rospy.logerr("cameraMatrix: " + str(cameraMatrix))
 
         ret, _ = cv2.projectPoints(objectPoints, rvec, tvec, cameraMatrix, distCoeffs)
 
         x = int(ret[0,0,0])
         y = int(ret[0,0,1])
-
-        rospy.logerr("ret: " + str(ret) + " x: " + str(x) + " x: " + str(x))
+        #rospy.logerr("x: " + str(x) + " y: " + str(y))
 
         return (x, y)
 
