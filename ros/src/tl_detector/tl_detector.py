@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from std_msgs.msg import Int32
-from geometry_msgs.msg import PoseStamped, Pose
+from geometry_msgs.msg import PoseStamped, Pose, PointStamped
 from styx_msgs.msg import TrafficLightArray, TrafficLight
 from styx_msgs.msg import Lane
 from sensor_msgs.msg import Image
@@ -143,13 +143,6 @@ class TLDetector(object):
         image_width = config.camera_info.image_width
         image_height = config.camera_info.image_height
 
-        cord_x = point_in_world[0]
-        cord_y = point_in_world[1]
-
-
-        #rospy.logerr("x: " + str(cord_x) + " y: " + str(cord_y))
-        #rospy.logerr("fx: " + str(fx) + " fy: " + str(fy))
-        #rospy.logerr("image_width: " + str(image_width) + " image_height: " + str(image_height))
 
         # get transform between pose of camera and world frame
         trans = None
@@ -167,55 +160,33 @@ class TLDetector(object):
         #http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
         #cv2.projectPoints(objectPoints, rvec, tvec, cameraMatrix, distCoeffs[, imagePoints[, jacobian[, aspectRatio]]]) -> imagePoints, jacobian
         #Projects 3D points to an image plane
-
-        '''
-        convert light to car cordinates
-        '''
-        # From quaternion to Euler angles:
-        x = self.pose.pose.orientation.x
-        y = self.pose.pose.orientation.y
-        z = self.pose.pose.orientation.z
-        w = self.pose.pose.orientation.w
-        # Determine car heading:
-        t3 = +2.0 * (w * z + x*y)
-        t4 = +1.0 - 2.0 * (y*y + z*z)
-        theta = math.degrees(math.atan2(t3, t4))
-
-        Xcar = (cord_y-self.pose.pose.position.y)*math.sin(math.radians(theta))-(self.pose.pose.position.x-cord_x)*math.cos(math.radians(theta))
-        Ycar = (cord_y-self.pose.pose.position.y)*math.cos(math.radians(theta))-(cord_x-self.pose.pose.position.x)*math.sin(math.radians(theta))
-
-        #rospy.logerr("trans: " + str(trans) + " rot: " + str(rot))
-        rospy.logerr("Xcar: " + str(Xcar) + " Ycar: " + str(Ycar))
-
         #https://www.scratchapixel.com/lessons/3d-basic-rendering/computing-pixel-coordinates-of-3d-point/mathematics-computing-2d-coordinates-of-3d-points
-        #camX = float(Ycar)
-        #camY = 0.0
-        #camZ = float(-Xcar)
-        objectPoints = np.array([[float(Xcar), float(Ycar), 0.0]], dtype=np.float32)
-        #objectPoints = np.array([[float(Ycar), 0, float(Xcar)]]) #-5.868888
-        #objectPoints = np.array([[point_in_world[0], point_in_world[1], 5.868888]]) # TODO: Check if this is valid in real scenario
+
+        objectPoints = np.array([[point_in_world[0], point_in_world[1], 5.868888]]) # TODO: Check if this is valid in real scenario
         # taken from: rostopic echo /vehicle/traffic_lights
 
-        #rvec = tf.transformations.quaternion_matrix(rot)[:3, :3]
-        #tvec = np.array(trans)
-        rvec = (0,0,0)
-        tvec = (0,0,0)
+        rvec = tf.transformations.quaternion_matrix(rot)[:3, :3]
+        tvec = np.array(trans)
+        #rvec = (0,0,0)
+        #tvec = (0,0,0)
 
         cameraMatrix = np.array([[fx,  0, image_width/2],
                                 [ 0, fy, image_height/2],
                                 [ 0,  0,  1]])
         distCoeffs = None
 
+        rospy.logerr("image_width: " + str(image_width) + "image_height: " + str(image_height))
         #rospy.logerr("objectPoints: " + str(objectPoints))
         #rospy.logerr("rvec: " + str(rvec))
         #rospy.logerr("tvec: " + str(tvec))
         #rospy.logerr("cameraMatrix: " + str(cameraMatrix))
 
         ret, _ = cv2.projectPoints(objectPoints, rvec, tvec, cameraMatrix, distCoeffs)
+        # ret, _ = cv2.projectPoints(objectPoints, rvec, tvec, cameraMatrix, distCoeffs)
 
         x = int(ret[0,0,0])
         y = int(ret[0,0,1])
-        #rospy.logerr("x: " + str(x) + " y: " + str(y))
+        rospy.logerr("x: " + str(x) + " y: " + str(y))
 
         return (x, y)
 
@@ -237,17 +208,22 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         x, y = self.project_to_image_plane(light)
-
+        rospy.logwarn("cv_image: " + str(cv_image.shape))
         #TODO use light location to zoom in on traffic light in image
         if ((x is None) or (y is None) or (x < 0) or (y<0) or
             (x>config.camera_info.image_width) or (y>config.camera_info.image_height)):
+
+            self.deb_img.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
             return TrafficLight.UNKNOWN
         else:
             left = max(0, x - 50)
             right = min(config.camera_info.image_width, x + 50)
             top = max(0, y - 50)
             bottom = min(config.camera_info.image_height, y + 50)
-            crop = cv_image[top:bottom, left:right]
+            #crop = cv_image[top:bottom, left:right]
+            crop = cv_image[:, :, :]
+
+            cv2.circle(crop, (x, y), radius=20, color=(255, 0, 0), thickness=4)
 
             self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img
@@ -314,6 +290,24 @@ class TLDetector(object):
         delta_x = l_p[0] - wp.x
         delta_y = l_p[1] - wp.y
         return math.sqrt(delta_x*delta_x + delta_y*delta_y)
+
+    # Valtgun 20.08.2017 - helper to transform pose quaterion to euler
+    # https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Quaternion_to_Euler_Angles_Conversion
+    def Quaternion_toEulerianAngle(self, x, y, z, w):
+        ysqr = y*y
+        t0 = +2.0 * (w * x + y*z)
+        t1 = +1.0 - 2.0 * (x*x + ysqr)
+        X = math.degrees(math.atan2(t0, t1))
+
+        t2 = +2.0 * (w*y - z*x)
+        t2 =  1 if t2 > 1 else t2
+        t2 = -1 if t2 < -1 else t2
+        Y = math.degrees(math.asin(t2))
+
+        t3 = +2.0 * (w * z + x*y)
+        t4 = +1.0 - 2.0 * (ysqr + z*z)
+        Z = math.degrees(math.atan2(t3, t4))
+        return X, Y, Z
 
 if __name__ == '__main__':
     try:
