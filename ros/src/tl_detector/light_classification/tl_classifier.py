@@ -4,7 +4,12 @@ import cv2
 
 class TLClassifier(object):
     def __init__(self):
-        pass
+        self.pixel_threshold = 40 # Thresholding value for colored pixels
+        
+        # Manually set boundaries for colors
+        self.boundaries = [
+            ([80, 80, 170], [120, 120, 255]), # Red
+        ]
 
     def get_classification(self, image):
         """Determines the color of the traffic light in the image
@@ -14,32 +19,22 @@ class TLClassifier(object):
 
         Returns:
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
-            0 (red / yellow) or 2 (green)
-            Not implented returns: 1 (yellow), 4 (unknown)
+            0 for red, 4 for green/yellow/none
         """
 
-        # Manually set boundaries for colors
-        boundaries = [
-            ([0, 0, 80], [50, 130, 255]), # Red
-            ([200, 200, 40], [255, 255, 140]), # Green
-        ]
+        # Set default state
+        state = TrafficLight.UNKNOWN
 
-        results = [0, 0]
-        bd_count = 0
-
-        for (lower, upper) in boundaries:
+        for (lower, upper) in self.boundaries:
             lower = np.array(lower, dtype = "uint8")
             upper = np.array(upper, dtype = "uint8")
 
-            # Check for boundary colors in images
+            # Count boundary colors in image
             mask = cv2.inRange(image, lower, upper)
-            output = cv2.bitwise_and(image, image, mask=mask)
+            color_detection = cv2.countNonZero(mask)
 
-            # Sum the masks and save to result array
-            # (E.g Red light should have more red than green in image)
-            results[bd_count] = np.sum(output)
-            bd_count += 1
+            # Threshold detected red colors
+            if color_detection > self.pixel_threshold:
+                state = TrafficLight.RED
 
-        state = np.array(results).argmax()   # Returns index of max()
-        state += 1 if state == 1 else 0     # Since green is valued 2
         return state
