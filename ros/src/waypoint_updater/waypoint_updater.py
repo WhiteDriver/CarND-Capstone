@@ -3,9 +3,9 @@
 import math
 import rospy
 from geometry_msgs.msg import PoseStamped
-from styx_msgs.msg import Lane, Waypoint, TrafficLightArray
+from styx_msgs.msg import Lane, Waypoint, TrafficLightArray, TrafficLight
 import std_msgs.msg
-from std_msgs.msg import Bool, Float64
+from std_msgs.msg import Bool, Float64, Int32
 
 
 '''
@@ -35,7 +35,7 @@ class WaypointUpdater(object):
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
 	# Omar 25.08.2017 Subscribed to Traffic lights waypoints
-        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
+        #rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
 	# Omar 25.08.2017 add a variable for the car current position
 	self.pose = None
         # Omar 25.08.2017 add a variable lane
@@ -51,16 +51,21 @@ class WaypointUpdater(object):
         self.last_waypoints = None
         self.points_in_back = 10
         # Vishnerevsky & Omar 26.08.2017
-        self.traffic_lights_X = []
-        self.traffic_lights_Y = []
-        self.traffic_lights_S = [] # State of the traffic light
+        self.traffic_lights_X = None
+        self.traffic_lights_Y = None
+        self.traffic_lights_S = None # State of the traffic light
+
+        # Vishnerevsky 29.08.2017: Add subscriber for '/traffic_waypoint' topic
+        rospy.Subscriber('/traffic_waypoint', TrafficLight, self.tl_state_cb)
+        self.true_tl_state = None # True state of the traffic light
+        self.true_tl_distx = 1000 # Distance to the nearest traffic light (X in vehicle coordinate system)
 
         rospy.spin()
 
     def pose_cb(self, msg):
 
         # TODO: Implement
-        if self.last_waypoints is not None:
+        if ((self.last_waypoints is not None) and (self.traffic_lights_S is not None)):
             #rospy.logwarn('GO_555!!!')
             self.pose = msg.pose
             waypoints = self.last_waypoints.waypoints
@@ -69,55 +74,62 @@ class WaypointUpdater(object):
             all_waypoints = waypoints + waypoints[:LOOKAHEAD_WPS]
             self.lane.waypoints = all_waypoints[start_point-self.points_in_back: start_point-self.points_in_back + LOOKAHEAD_WPS]         
 
-            #for index in range(len(self.lane.waypoints)):
-
-            #    self.lane.waypoints[index].twist.twist.linear.x = 20 # Meters per second
-
             # Vishnerevsky & Omar 26.08.2017:
             dist_to_the_light = 1000.0
             cur_tl_num = 0 # Current Traffic Light Number
             # Try to convert traffic lignts positions into the vehicle coordinate system:
-            if (len(self.traffic_lights_X) == 8):
-                # Lest transform our points into the vehicle coordinate system:
-                lights_x_car = []
-                lights_y_car = []
-                # From quaternion to Euler angles:
-                x = self.pose.orientation.x
-                y = self.pose.orientation.y
-                z = self.pose.orientation.z
-                w = self.pose.orientation.w
-                # Determine car heading:
-                t3 = +2.0 * (w * z + x*y)
-                t4 = +1.0 - 2.0 * (y*y + z*z)
-                theta = math.degrees(math.atan2(t3, t4))
-                for i in range(len(self.traffic_lights_X)):
-                    Xcar = (self.traffic_lights_Y[i]-self.pose.position.y)*math.sin(math.radians(theta))-(self.pose.position.x-self.traffic_lights_X[i])*math.cos(math.radians(theta))
-                    Ycar = (self.traffic_lights_Y[i]-self.pose.position.y)*math.cos(math.radians(theta))-(self.traffic_lights_X[i]-self.pose.position.x)*math.sin(math.radians(theta)) 
-                    #lights_x_car.append(Xcar) 
-                    #lights_y_car.append(Ycar)
-                    # Condition for the nearest traffic light:
-                    if ((math.fabs(Ycar) < 15.0) and (Xcar >= 0) and (Xcar < dist_to_the_light)):
-                        dist_to_the_light = Xcar
-                        cur_tl_num = i
-                        #rospy.logwarn(dist_to_the_light) 
-                        #rospy.logwarn(self.traffic_lights_S[i]) 
-                # Conditions for stop:
-                if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 30.0)) and ((self.traffic_lights_S[cur_tl_num] == 0) or (self.traffic_lights_S[cur_tl_num] == 1))):
-                    #rospy.logwarn('STOP!!!!')
-                    self.velocity_reference = 2.0
-                elif (((dist_to_the_light < 30.0) and (dist_to_the_light > 25.0)) and ((self.traffic_lights_S[cur_tl_num] == 0) or (self.traffic_lights_S[cur_tl_num] == 1))):
-                    self.velocity_reference = 0.0              
-                else:
-                    self.velocity_reference = 20.0
-                
+            # Lest transform our points into the vehicle coordinate system:
+            lights_x_car = []
+            lights_y_car = []
+            # From quaternion to Euler angles:
+            x = self.pose.orientation.x
+            y = self.pose.orientation.y
+            z = self.pose.orientation.z
+            w = self.pose.orientation.w
+            # Determine car heading:
+            t3 = +2.0 * (w * z + x*y)
+            t4 = +1.0 - 2.0 * (y*y + z*z)
+            theta = math.degrees(math.atan2(t3, t4))
+            Xcar = (self.traffic_lights_Y-self.pose.position.y)*math.sin(math.radians(theta))-(self.pose.position.x-self.traffic_lights_X)*math.cos(math.radians(theta))
+            Ycar = (self.traffic_lights_Y-self.pose.position.y)*math.cos(math.radians(theta))-(self.traffic_lights_X-self.pose.position.x)*math.sin(math.radians(theta)) 
+            # Condition for the nearest traffic light:
+            if ((math.fabs(Ycar) < 15.0) and (Xcar >= 0)):
+                dist_to_the_light = Xcar+25
             else:
-                #for index in range(len(self.lane.waypoints)):
-                    #self.lane.waypoints[index].twist.twist.linear.x = 20.0 # Meters per second
+                dist_to_the_light = 1000
+            #rospy.logwarn(dist_to_the_light) 
+            # Conditions for stop:
+            '''
+            if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 30.0)) and ((self.traffic_lights_S[cur_tl_num] == 0) or (self.traffic_lights_S[cur_tl_num] == 1))):
+                #rospy.logwarn('STOP!!!!')
+                self.velocity_reference = 2.0
+            elif (((dist_to_the_light < 30.0) and (dist_to_the_light > 25.0)) and ((self.traffic_lights_S[cur_tl_num] == 0) or (self.traffic_lights_S[cur_tl_num] == 1))):
+                self.velocity_reference = 0.0              
+            else:
                 self.velocity_reference = 20.0
-                rospy.logwarn('Traffic lights list is not defined')
-            # Waypoints publishihg:
+            '''
+            rospy.logerr(dist_to_the_light)
+            # Vishnerevsky 29.08.2017: Conditions with true_tl_state
+            if (((dist_to_the_light < 100.0) and (dist_to_the_light >= 35.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
+                rospy.logwarn('SLOW!!!!')
+                self.velocity_reference = 2.0
+                #rospy.logerr(self.traffic_lights_S) 
+            elif (((dist_to_the_light < 35.0) and (dist_to_the_light > 25.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
+                self.velocity_reference = 0.0  
+                rospy.logwarn('STOP!!!!')
+                #rospy.logerr(self.traffic_lights_S)            
+            else:
+                self.velocity_reference = 6.0
+                rospy.logwarn('GO!!!!!!')
+                #rospy.logerr(self.traffic_lights_S)
             self.final_waypoints_pub.publish(self.lane)
             self.velocity_pub.publish(self.velocity_reference)
+
+        else:
+            rospy.logwarn('Traffic lights list is not defined')
+            # Waypoints publishihg:
+            #self.final_waypoints_pub.publish(self.lane)
+            #self.velocity_pub.publish(self.velocity_reference)
 
      
 
@@ -126,18 +138,7 @@ class WaypointUpdater(object):
         self.last_waypoints = Lane
 
     def traffic_cb(self, msg):
-        # Vishnerevsky & Omar 26.08.2017
-        #rospy.logwarn('11112222')
-        #rospy.logwarn(msg.lights[0].pose.pose.position.y) # - for example
-        self.traffic_lights_X = []
-        self.traffic_lights_Y = []
-        self.traffic_lights_S = []
-        for light in msg.lights:
-            #X_light = light.pose.pose.position.x
-            #Y_light = light.pose.pose.position.y
-            self.traffic_lights_X.append(light.pose.pose.position.x)
-            self.traffic_lights_Y.append(light.pose.pose.position.y)
-            self.traffic_lights_S.append(light.state)
+        pass
         
 
     '''
@@ -189,6 +190,15 @@ class WaypointUpdater(object):
         delta_x = p1.x - p2.x
         delta_y = p1.y - p2.y
         return math.sqrt(delta_x*delta_x + delta_y*delta_y)
+
+    # Vishnerevsky 29.08.2017: Get the traffic light state message
+    def tl_state_cb(self, msg):
+        if self.last_waypoints is not None:
+            self.true_tl_distn = msg.pose.pose.position.x
+            self.traffic_lights_X = msg.pose.pose.position.x
+            self.traffic_lights_Y = msg.pose.pose.position.y
+            self.traffic_lights_S = msg.state
+
 
 if __name__ == '__main__':
     try:
