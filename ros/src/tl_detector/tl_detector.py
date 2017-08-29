@@ -39,7 +39,9 @@ class TLDetector(object):
         '''
         sub6 = rospy.Subscriber('/camera/image_raw', Image, self.image_cb)
 
-        self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
+        # Edited by Vishnerevsky 29.08.2017
+        self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', TrafficLight, queue_size=1)
+        self.tl_tx = TrafficLight()
 
         self.deb_img = rospy.Publisher('/deb_img', Image, queue_size=1)
 
@@ -100,9 +102,15 @@ class TLDetector(object):
             self.last_state = self.state
             light_wp = light_wp if state == TrafficLight.RED else -1
             self.last_wp = light_wp
-            self.upcoming_red_light_pub.publish(Int32(state))
+            #self.upcoming_red_light_pub.publish(Int32(state))
+            self.tl_tx.pose.pose.position.x = light_wp
+            self.tl_tx.state = state
+            self.upcoming_red_light_pub.publish(self.tl_tx)
         else:
-            self.upcoming_red_light_pub.publish(Int32(self.state))
+            #self.upcoming_red_light_pub.publish(Int32(self.state))
+            self.tl_tx.pose.pose.position.x = self.last_wp
+            self.tl_tx.state = self.state
+            self.upcoming_red_light_pub.publish(self.tl_tx)
         self.state_count += 1
 
     def get_closest_waypoint(self, pose):
