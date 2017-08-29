@@ -133,7 +133,7 @@ class DBWNode(object):
                 #else:
                 #    self.V_reference = self.previous_V_ref
 
-                #rospy.logwarn(V_reference) 
+                #rospy.logwarn(V_reference)
                 VELE = self.V_reference - self.cur_v
                 # Cross Track Error:
                 CTE = self.get_CTE(self.final_waypoints, self.current_pose)
@@ -207,7 +207,7 @@ class DBWNode(object):
     # Vishnerevsky 26.08.2017
     def velocity_cb(self, msg):
         self.V_reference = msg.data
-        rospy.logwarn(self.V_reference)
+        #rospy.logwarn(self.V_reference)
 
     # Valtgun 20.08.2017 - helper to transform pose quaterion to euler
     # https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Quaternion_to_Euler_Angles_Conversion

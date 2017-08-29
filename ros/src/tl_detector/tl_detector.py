@@ -60,6 +60,8 @@ class TLDetector(object):
         self.distance_to_light = 1000.0
         self.deviation_of_light = 0.0
 
+        self.IGNORE_FAR_LIGHT = 100.0
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -90,6 +92,7 @@ class TLDetector(object):
         of times till we start using it. Otherwise the previous stable state is
         used.
         '''
+        #rospy.logerr('Lwp: ' + str(light_wp) + ' state:' + str(state))
         if self.state != state:
             self.state_count = 0
             self.state = state
@@ -187,13 +190,13 @@ class TLDetector(object):
 
         Xcar = (cord_y-self.pose.pose.position.y)*math.sin(math.radians(theta))-(self.pose.pose.position.x-cord_x)*math.cos(math.radians(theta))
         Ycar = (cord_y-self.pose.pose.position.y)*math.cos(math.radians(theta))-(cord_x-self.pose.pose.position.x)*math.sin(math.radians(theta))
- 
+
         # Vishnerevsky 27.08.2017:
         self.distance_to_light = Xcar
         self.deviation_of_light = Ycar
 
         #rospy.logerr("trans: " + str(trans) + " rot: " + str(rot))
-        rospy.logerr("Xcar: " + str(Xcar) + " Ycar: " + str(Ycar)) #Commented by Vishnerevsky 27.08.2017
+        #rospy.logerr("Xcar: " + str(Xcar) + " Ycar: " + str(Ycar)) #Commented by Vishnerevsky 27.08.2017
 
         #https://www.scratchapixel.com/lessons/3d-basic-rendering/computing-pixel-coordinates-of-3d-point/mathematics-computing-2d-coordinates-of-3d-points
         #camX = float(Ycar)
@@ -310,9 +313,16 @@ class TLDetector(object):
         light_idx = light_pos_wp.index(light_num_wp)
         light = light_positions[light_idx]
 
+        # Valtgun 29.08.2017 added distance check to light
+        light_distance = self.distance_light(light, self.waypoints.waypoints[self.last_car_position].pose.pose.position)
+        #rospy.logerr('light_distance: ' + str(light_distance))
+
         if light:
-            state = self.get_light_state(light)
-            return light, state
+            if (light_distance >= self.IGNORE_FAR_LIGHT):
+                return -1, TrafficLight.UNKNOWN
+            else:
+                state = self.get_light_state(light)
+                return light_num_wp, state # changed from light to light_num_wp to return waypoint no.
         self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 
