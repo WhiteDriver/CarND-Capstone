@@ -5,7 +5,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint, TrafficLightArray
 import std_msgs.msg
-from std_msgs.msg import Bool, Float64
+from std_msgs.msg import Bool, Float64, Int32
 
 
 '''
@@ -55,6 +55,10 @@ class WaypointUpdater(object):
         self.traffic_lights_Y = []
         self.traffic_lights_S = [] # State of the traffic light
 
+        # Vishnerevsky 29.08.2017: Add subscriber for '/traffic_waypoint' topic
+        rospy.Subscriber('/traffic_waypoint', Int32, self.tl_state_cb)
+        self.true_tl_state = None # True state of the traffic light
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -102,6 +106,7 @@ class WaypointUpdater(object):
                         #rospy.logwarn(dist_to_the_light) 
                         #rospy.logwarn(self.traffic_lights_S[i]) 
                 # Conditions for stop:
+                '''
                 if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 30.0)) and ((self.traffic_lights_S[cur_tl_num] == 0) or (self.traffic_lights_S[cur_tl_num] == 1))):
                     #rospy.logwarn('STOP!!!!')
                     self.velocity_reference = 2.0
@@ -109,7 +114,19 @@ class WaypointUpdater(object):
                     self.velocity_reference = 0.0              
                 else:
                     self.velocity_reference = 20.0
-                
+                '''
+                # Vishnerevsky 29.08.2017: Conditions with true_tl_state
+                if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 30.0)) and ((self.true_tl_state == 0) or (self.true_tl_state == 1))):
+                    #rospy.logwarn('STOP!!!!')
+                    self.velocity_reference = 2.0
+                elif (((dist_to_the_light < 30.0) and (dist_to_the_light > 25.0)) and ((self.true_tl_state == 0) or (self.true_tl_state == 1))):
+                    self.velocity_reference = 0.0  
+                    #rospy.logerr(self.true_tl_state)            
+                else:
+                    self.velocity_reference = 20.0
+                    #rospy.logerr(self.true_tl_state)
+
+
             else:
                 #for index in range(len(self.lane.waypoints)):
                     #self.lane.waypoints[index].twist.twist.linear.x = 20.0 # Meters per second
@@ -189,6 +206,11 @@ class WaypointUpdater(object):
         delta_x = p1.x - p2.x
         delta_y = p1.y - p2.y
         return math.sqrt(delta_x*delta_x + delta_y*delta_y)
+
+    # Vishnerevsky 29.08.2017: Get the traffic light state message
+    def tl_state_cb(self, msg):
+        self.true_tl_state = msg.data
+        rospy.logwarn(self.true_tl_state)
 
 if __name__ == '__main__':
     try:
