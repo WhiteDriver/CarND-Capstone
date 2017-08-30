@@ -4,11 +4,11 @@ import cv2
 
 class TLClassifier(object):
     def __init__(self):
-        self.pixel_threshold = 40 # Thresholding value for colored pixels
+        self.pixel_threshold = 8 # Thresholding value for colored pixels
         
         # Manually set boundaries for colors
         self.boundaries = [
-            ([80, 80, 170], [120, 120, 255]), # Red
+            ([140, 60, 150], [180, 140, 255]), # Red
         ]
 
     def get_classification(self, image):
@@ -30,7 +30,8 @@ class TLClassifier(object):
             upper = np.array(upper, dtype = "uint8")
 
             # Count boundary colors in image
-            mask = cv2.inRange(image, lower, upper)
+            hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv_image, lower, upper)
             color_detection = cv2.countNonZero(mask)
 
             # Threshold detected red colors
