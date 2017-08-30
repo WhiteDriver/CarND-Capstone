@@ -68,7 +68,7 @@ class DBWNode(object):
         #self.V_pid = PID(kp=1.0, ki=0.02, kd=0, mn=decel_limit, mx=accel_limit)
         # Vishnerevsky 25.08.2017
         #self.V_pid = PID(kp=1000.0, ki=5000.0, kd=100.0, mn=decel_limit*10.0, mx=accel_limit*10.0)
-        self.V_pid = PID(kp=100.0, ki=0.0, kd=0.0)
+        self.V_pid = PID(kp=1.0, ki=0.015, kd=0.0)
         self.S_pid = PID(kp=0.2, ki=0.001, kd=0.5)
 
         # Vishnerevsky 25.08.2017
@@ -147,16 +147,19 @@ class DBWNode(object):
 
                 #rospy.logwarn(CTE)
                 throttle = self.V_pid.step(VELE, self.delta_t)
-                brake = 0
+                brake = 0.0
                 if throttle < 0:
-                    brake = -10.0 * throttle
-                    throttle = 0
+                    brake = -20000.0*throttle
+                    throttle = 0.0
+                    self.V_pid.reset()
                 steering = self.S_pid.step(CTE, self.delta_t)
                 self.publish(throttle, brake, steering)
 
             else:
                 # Here we must reset PID controllers
-                pass
+                #pass
+                self.V_pid.reset()
+                self.S_pid.reset()
             rate.sleep()
 
     def publish(self, throttle, brake, steer):

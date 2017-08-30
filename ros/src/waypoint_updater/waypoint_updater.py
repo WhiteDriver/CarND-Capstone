@@ -94,7 +94,7 @@ class WaypointUpdater(object):
             Ycar = (self.traffic_lights_Y-self.pose.position.y)*math.cos(math.radians(theta))-(self.traffic_lights_X-self.pose.position.x)*math.sin(math.radians(theta)) 
             # Condition for the nearest traffic light:
             if ((math.fabs(Ycar) < 15.0) and (Xcar >= 0)):
-                dist_to_the_light = Xcar+25
+                dist_to_the_light = Xcar
             else:
                 dist_to_the_light = 1000
             #rospy.logwarn(dist_to_the_light) 
@@ -108,19 +108,19 @@ class WaypointUpdater(object):
             else:
                 self.velocity_reference = 20.0
             '''
-            rospy.logerr(dist_to_the_light)
+            #rospy.logerr(dist_to_the_light)
             # Vishnerevsky 29.08.2017: Conditions with true_tl_state
-            if (((dist_to_the_light < 100.0) and (dist_to_the_light >= 35.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
-                rospy.logwarn('SLOW!!!!')
-                self.velocity_reference = 2.0
+            if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 5.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
+                #rospy.logwarn('SLOW!!!!')
+                self.velocity_reference = 0.7
                 #rospy.logerr(self.traffic_lights_S) 
-            elif (((dist_to_the_light < 35.0) and (dist_to_the_light > 25.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
+            elif (((dist_to_the_light < 5.0) and (dist_to_the_light > 0.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
                 self.velocity_reference = 0.0  
-                rospy.logwarn('STOP!!!!')
+                #rospy.logwarn('STOP!!!!')
                 #rospy.logerr(self.traffic_lights_S)            
             else:
-                self.velocity_reference = 6.0
-                rospy.logwarn('GO!!!!!!')
+                self.velocity_reference = 4.5
+                #rospy.logwarn('GO!!!!!!')
                 #rospy.logerr(self.traffic_lights_S)
             self.final_waypoints_pub.publish(self.lane)
             self.velocity_pub.publish(self.velocity_reference)
