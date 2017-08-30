@@ -13,7 +13,7 @@ from traffic_light_config import config
 import math
 import numpy as np
 
-STATE_COUNT_THRESHOLD = 3
+STATE_COUNT_THRESHOLD = 5
 
 class TLDetector(object):
     def __init__(self):
@@ -52,7 +52,7 @@ class TLDetector(object):
         self.state = TrafficLight.UNKNOWN
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
-        self.state_count = 0
+        self.state_count = 11
 
         self.best_waypoint = 0
         self.last_car_position = 0
@@ -95,6 +95,7 @@ class TLDetector(object):
         used.
         '''
         #rospy.logerr('Lwp: ' + str(light_wp) + ' state:' + str(state))
+        '''
         if self.state != state:
             self.state_count = 0
             self.state = state
@@ -113,6 +114,48 @@ class TLDetector(object):
             self.tl_tx.state = self.state
             self.upcoming_red_light_pub.publish(self.tl_tx)
         self.state_count += 1
+        '''
+        # Vishnerevsky 30.08.2017: Treshold for 0 state
+        if state == 0:
+            self.state = state
+            self.state_count = 0
+            light_wp = light_wp if state == TrafficLight.RED else -1
+            self.last_wp = light_wp
+            if (light_wp >=0):
+                self.tl_tx.pose.pose.position.x = self.waypoints.waypoints[self.last_wp].pose.pose.position.x
+                self.tl_tx.pose.pose.position.y = self.waypoints.waypoints[self.last_wp].pose.pose.position.y
+                self.tl_tx.pose.pose.position.z = self.waypoints.waypoints[self.last_wp].pose.pose.position.z
+            self.tl_tx.state = state
+            self.upcoming_red_light_pub.publish(self.tl_tx)
+        else:
+            if self.state_count > STATE_COUNT_THRESHOLD:
+                self.state = state
+                light_wp = light_wp if state == TrafficLight.RED else -1
+                self.last_wp = light_wp
+                if (light_wp >=0):
+                    self.tl_tx.pose.pose.position.x = self.waypoints.waypoints[self.last_wp].pose.pose.position.x
+                    self.tl_tx.pose.pose.position.y = self.waypoints.waypoints[self.last_wp].pose.pose.position.y
+                    self.tl_tx.pose.pose.position.z = self.waypoints.waypoints[self.last_wp].pose.pose.position.z
+                self.tl_tx.state = self.state
+                self.upcoming_red_light_pub.publish(self.tl_tx)
+                self.state_count += 1 
+            else:
+                self.state = 0
+                light_wp = light_wp if state == TrafficLight.RED else -1
+                self.last_wp = light_wp
+                if (light_wp >=0):
+                    self.tl_tx.pose.pose.position.x = self.waypoints.waypoints[self.last_wp].pose.pose.position.x
+                    self.tl_tx.pose.pose.position.y = self.waypoints.waypoints[self.last_wp].pose.pose.position.y
+                    self.tl_tx.pose.pose.position.z = self.waypoints.waypoints[self.last_wp].pose.pose.position.z
+                self.tl_tx.state = self.state
+                self.upcoming_red_light_pub.publish(self.tl_tx) 
+                self.state_count += 1 
+        
+
+
+
+
+
 
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
