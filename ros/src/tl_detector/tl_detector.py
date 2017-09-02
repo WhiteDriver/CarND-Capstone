@@ -64,7 +64,24 @@ class TLDetector(object):
 
         self.IGNORE_FAR_LIGHT = 100.0
 
+        sub_bagfile = rospy.Subscriber('/image_raw', Image, self.image_cb_bag)
+
         rospy.spin()
+
+    def image_cb_bag(self, msg):
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        res = self.light_classifier.get_classification(cv_image)
+        if (res == 0):
+            rospy.logerr('Rosbag: RED')
+        elif (res == 1):
+            rospy.logerr('Rosbag: Yellow')
+        elif (res == 2):
+            rospy.logerr('Rosbag: Green')
+        else:
+            rospy.logerr('Rosbag: Unknown')
+
+        self.deb_img.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+        return res
 
     def pose_cb(self, msg):
         self.pose = msg
@@ -87,6 +104,15 @@ class TLDetector(object):
         self.has_image = True
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
+
+        if (state == 0):
+            rospy.logerr('Simul: RED')
+        elif (state == 1):
+            rospy.logerr('Simul: Yellow')
+        elif (state == 2):
+            rospy.logerr('Simul: Green')
+        else:
+            rospy.logerr('Simul: Unknown')
 
         '''
         Publish upcoming red lights at camera frequency.
@@ -138,7 +164,7 @@ class TLDetector(object):
                     self.tl_tx.pose.pose.position.z = self.waypoints.waypoints[self.last_wp].pose.pose.position.z
                 self.tl_tx.state = self.state
                 self.upcoming_red_light_pub.publish(self.tl_tx)
-                self.state_count += 1 
+                self.state_count += 1
             else:
                 self.state = 0
                 light_wp = light_wp if state == TrafficLight.RED else -1
@@ -148,9 +174,9 @@ class TLDetector(object):
                     self.tl_tx.pose.pose.position.y = self.waypoints.waypoints[self.last_wp].pose.pose.position.y
                     self.tl_tx.pose.pose.position.z = self.waypoints.waypoints[self.last_wp].pose.pose.position.z
                 self.tl_tx.state = self.state
-                self.upcoming_red_light_pub.publish(self.tl_tx) 
-                self.state_count += 1 
-        
+                self.upcoming_red_light_pub.publish(self.tl_tx)
+                self.state_count += 1
+
 
 
 
@@ -306,17 +332,19 @@ class TLDetector(object):
             (x>config.camera_info.image_width) or (y>config.camera_info.image_height)):
             return TrafficLight.UNKNOWN
         else:
-            #left = max(0, x - 50)
-            #right = min(config.camera_info.image_width, x + 50)
-            left = max(0, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
-            right = min(config.camera_info.image_width/2 - int(self.deviation_of_light)*10+200, config.camera_info.image_width) # Vishnerevsky 27.08.2017
-            #top = max(0, y)
-            #bottom = min(config.camera_info.image_height, y + 200)
+            # 800x600
+            #left = max(0, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
+            #right = min(config.camera_info.image_width/2 - int(self.deviation_of_light)*10+200, config.camera_info.image_width) # Vishnerevsky 27.08.2017
+            left = max(0, min(115, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200))
+            right = left+685
+
             vertical = int(y - (45.0-self.distance_to_light)*150.0/35.0)
             if vertical<0:
                 vertical = 0
             top = min(vertical, config.camera_info.image_height-1)
-            bottom = min(300 + vertical, config.camera_info.image_height)
+            #bottom = min(300 + vertical, config.camera_info.image_height)
+            bottom = min(325 + vertical, config.camera_info.image_height)
+            # crop = 325, 685
             crop = cv_image[top:bottom, left:right]
             # Vishnerevsky 27.08.2017
             #crop = cv_image
@@ -324,7 +352,7 @@ class TLDetector(object):
             self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        return self.light_classifier.get_classification(crop)
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its

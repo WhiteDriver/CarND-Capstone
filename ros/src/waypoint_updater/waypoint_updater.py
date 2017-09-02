@@ -34,12 +34,12 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
-	# Omar 25.08.2017 Subscribed to Traffic lights waypoints
+	    # Omar 25.08.2017 Subscribed to Traffic lights waypoints
         #rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-	# Omar 25.08.2017 add a variable for the car current position
-	self.pose = None
+	    # Omar 25.08.2017 add a variable for the car current position
+        self.pose = None
         # Omar 25.08.2017 add a variable lane
-	self.lane = Lane()
+        self.lane = Lane()
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -72,7 +72,7 @@ class WaypointUpdater(object):
             self.lane.header.stamp = rospy.Time.now()
             start_point = self.closest_waypoint(self.pose, waypoints)
             all_waypoints = waypoints + waypoints[:LOOKAHEAD_WPS]
-            self.lane.waypoints = all_waypoints[start_point-self.points_in_back: start_point-self.points_in_back + LOOKAHEAD_WPS]         
+            self.lane.waypoints = all_waypoints[start_point-self.points_in_back: start_point-self.points_in_back + LOOKAHEAD_WPS]
 
             # Vishnerevsky & Omar 26.08.2017:
             dist_to_the_light = 1000.0
@@ -91,20 +91,20 @@ class WaypointUpdater(object):
             t4 = +1.0 - 2.0 * (y*y + z*z)
             theta = math.degrees(math.atan2(t3, t4))
             Xcar = (self.traffic_lights_Y-self.pose.position.y)*math.sin(math.radians(theta))-(self.pose.position.x-self.traffic_lights_X)*math.cos(math.radians(theta))
-            Ycar = (self.traffic_lights_Y-self.pose.position.y)*math.cos(math.radians(theta))-(self.traffic_lights_X-self.pose.position.x)*math.sin(math.radians(theta)) 
+            Ycar = (self.traffic_lights_Y-self.pose.position.y)*math.cos(math.radians(theta))-(self.traffic_lights_X-self.pose.position.x)*math.sin(math.radians(theta))
             # Condition for the nearest traffic light:
             if ((math.fabs(Ycar) < 15.0) and (Xcar >= 0)):
                 dist_to_the_light = Xcar
             else:
                 dist_to_the_light = 1000
-            #rospy.logwarn(dist_to_the_light) 
+            #rospy.logwarn(dist_to_the_light)
             # Conditions for stop:
             '''
             if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 30.0)) and ((self.traffic_lights_S[cur_tl_num] == 0) or (self.traffic_lights_S[cur_tl_num] == 1))):
                 #rospy.logwarn('STOP!!!!')
                 self.velocity_reference = 2.0
             elif (((dist_to_the_light < 30.0) and (dist_to_the_light > 25.0)) and ((self.traffic_lights_S[cur_tl_num] == 0) or (self.traffic_lights_S[cur_tl_num] == 1))):
-                self.velocity_reference = 0.0              
+                self.velocity_reference = 0.0
             else:
                 self.velocity_reference = 20.0
             '''
@@ -113,11 +113,11 @@ class WaypointUpdater(object):
             if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 5.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
                 #rospy.logwarn('SLOW!!!!')
                 self.velocity_reference = 0.7
-                #rospy.logerr(self.traffic_lights_S) 
+                #rospy.logerr(self.traffic_lights_S)
             elif (((dist_to_the_light < 5.0) and (dist_to_the_light > 0.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
-                self.velocity_reference = 0.0  
+                self.velocity_reference = 0.0
                 #rospy.logwarn('STOP!!!!')
-                #rospy.logerr(self.traffic_lights_S)            
+                #rospy.logerr(self.traffic_lights_S)
             else:
                 self.velocity_reference = 4.5
                 #rospy.logwarn('GO!!!!!!')
@@ -131,7 +131,7 @@ class WaypointUpdater(object):
             #self.final_waypoints_pub.publish(self.lane)
             #self.velocity_pub.publish(self.velocity_reference)
 
-     
+
 
     def waypoints_cb(self, Lane):
         # TODO: Implement
@@ -139,7 +139,7 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         pass
-        
+
 
     '''
         # Vishnerevsky 25.08.2017
@@ -159,9 +159,9 @@ class WaypointUpdater(object):
             else:
                 for index in range(len(self.lane.waypoints)):
                     #if self.distance(self.pose.position, self.lane.waypoints[index].pose.pose.position) < self.distance(self.pose.position, msg.lights[Closest_TrafficLight].pose.pose.position):
-                    #self.set_waypoint_velocity(self.lane.waypoints, index, 20)    	
+                    #self.set_waypoint_velocity(self.lane.waypoints, index, 20)
                     self.lane.waypoints[index].twist.twist.linear.x = 20.0
-    '''     
+    '''
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
@@ -170,11 +170,11 @@ class WaypointUpdater(object):
     # Omar 25.08.2017 Get the waypoint velocity
     def get_waypoint_velocity(self, waypoint):
 	return waypoint.twist.twist.linear.x
-        
+
     # Omar 25.08.2017 Set the waypoint velocity
     def set_waypoint_velocity(self, waypoints, waypoint, velocity):
 	waypoints[waypoint].twist.twist.linear.x = velocity
-        
+
 
     def closest_waypoint(self, Pose, waypoints):
         best_waypoint = 0
