@@ -110,9 +110,9 @@ class WaypointUpdater(object):
             '''
             #rospy.logerr(dist_to_the_light)
             # Vishnerevsky 29.08.2017: Conditions with true_tl_state
-            if (((dist_to_the_light < 70.0) and (dist_to_the_light >= 5.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
+            if (((dist_to_the_light < 50.0) and (dist_to_the_light >= 5.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
                 #rospy.logwarn('SLOW!!!!')
-                self.velocity_reference = 0.7
+                self.velocity_reference = 1.7
                 #rospy.logerr(self.traffic_lights_S)
             elif (((dist_to_the_light < 5.0) and (dist_to_the_light > 0.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
                 self.velocity_reference = 0.0
