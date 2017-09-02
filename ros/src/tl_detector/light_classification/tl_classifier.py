@@ -9,14 +9,14 @@ from tensorflow.contrib.layers import flatten
 
 class TLClassifier(object):
     def __init__(self):
-        '''
+
         self.pixel_threshold = 8 # Thresholding value for colored pixels
 
         # Manually set boundaries for colors
         self.boundaries = [
             ([140, 60, 150], [180, 140, 255]), # Red
         ]
-        '''
+        
         self.x = tf.placeholder(tf.float32, (None, 65, 137, 3))
         self.y = tf.placeholder(tf.int32, (None))
         #one_hot_y = tf.one_hot(y_train, 4)
@@ -94,18 +94,6 @@ class TLClassifier(object):
         # Set default state
         state = TrafficLight.UNKNOWN
         '''
-        for (lower, upper) in self.boundaries:
-            lower = np.array(lower, dtype = "uint8")
-            upper = np.array(upper, dtype = "uint8")
-
-            # Count boundary colors in image
-            hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv_image, lower, upper)
-            color_detection = cv2.countNonZero(mask)
-
-            # Threshold detected red colors
-            if color_detection > self.pixel_threshold:
-                state = TrafficLight.RED
         '''
         # Beginning of imported code from Vladimir's neural network
         # resize and prepare image
@@ -113,20 +101,30 @@ class TLClassifier(object):
         if (image.shape[0] == 1096 and image.shape[1] == 1368): # rosbag
             image = image[100:image.shape[0]-350, 0:image.shape[1]]
             res = cv2.resize(image,None,fx=0.1, fy=0.1, interpolation = cv2.INTER_CUBIC)
-        elif (image.shape[0] == 325 and image.shape[1] == 685): # simulator cropped
-            res = cv2.resize(image,None,fx=0.2, fy=0.2, interpolation = cv2.INTER_CUBIC)
-        else:
-            return state
+            inp_img = res.reshape(1, 65, 137, 3)
+            out_logits = self.session.run(self.logits, feed_dict={self.x: inp_img})
+            out_idx = np.argmax(out_logits)
+            # Convert from logits to traffic light colors
+            if (out_idx == 0):
+                state = TrafficLight.RED
+            elif (out_idx == 2):
+                state = TrafficLight.YELLOW
+            elif (out_idx == 1):
+                state = TrafficLight.GREEN
 
-        inp_img = res.reshape(1, 65, 137, 3)
-        out_logits = self.session.run(self.logits, feed_dict={self.x: inp_img})
-        out_idx = np.argmax(out_logits)
-        # Convert from logits to traffic light colors
-        if (out_idx == 0):
-            state = TrafficLight.RED
-        elif (out_idx == 2):
-            state = TrafficLight.YELLOW
-        elif (out_idx == 1):
-            state = TrafficLight.GREEN
+        else: # simulator cropped
+            for (lower, upper) in self.boundaries:
+                lower = np.array(lower, dtype = "uint8")
+                upper = np.array(upper, dtype = "uint8")
+
+                # Count boundary colors in image
+                hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+                mask = cv2.inRange(hsv_image, lower, upper)
+                color_detection = cv2.countNonZero(mask)
+
+                # Threshold detected red colors
+                if color_detection > self.pixel_threshold:
+                    state = TrafficLight.RED
+
 
         return state

@@ -72,13 +72,13 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         res = self.light_classifier.get_classification(cv_image)
         if (res == 0):
-            rospy.logerr('Rosbag: RED')
+            rospy.loginfo('Rosbag: RED')
         elif (res == 1):
-            rospy.logerr('Rosbag: Yellow')
+            rospy.loginfo('Rosbag: Yellow')
         elif (res == 2):
-            rospy.logerr('Rosbag: Green')
+            rospy.loginfo('Rosbag: Green')
         else:
-            rospy.logerr('Rosbag: Unknown')
+            rospy.loginfo('Rosbag: Unknown')
 
         self.deb_img.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
         return res
@@ -106,13 +106,13 @@ class TLDetector(object):
         light_wp, state = self.process_traffic_lights()
 
         if (state == 0):
-            rospy.logerr('Simul: RED')
+            rospy.loginfo('Simul: RED')
         elif (state == 1):
-            rospy.logerr('Simul: Yellow')
+            rospy.loginfo('Simul: Yellow')
         elif (state == 2):
-            rospy.logerr('Simul: Green')
+            rospy.loginfo('Simul: Green')
         else:
-            rospy.logerr('Simul: Unknown')
+            rospy.loginfo('Simul: Unknown')
 
         '''
         Publish upcoming red lights at camera frequency.
@@ -333,18 +333,14 @@ class TLDetector(object):
             return TrafficLight.UNKNOWN
         else:
             # 800x600
-            #left = max(0, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
-            #right = min(config.camera_info.image_width/2 - int(self.deviation_of_light)*10+200, config.camera_info.image_width) # Vishnerevsky 27.08.2017
-            left = max(0, min(115, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200))
-            right = left+685
+            left = max(0, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
+            right = min(config.camera_info.image_width/2 - int(self.deviation_of_light)*10+200, config.camera_info.image_width) # Vishnerevsky 27.08.2017
 
             vertical = int(y - (45.0-self.distance_to_light)*150.0/35.0)
             if vertical<0:
                 vertical = 0
             top = min(vertical, config.camera_info.image_height-1)
-            #bottom = min(300 + vertical, config.camera_info.image_height)
-            bottom = min(325 + vertical, config.camera_info.image_height)
-            # crop = 325, 685
+            bottom = min(300 + vertical, config.camera_info.image_height)
             crop = cv_image[top:bottom, left:right]
             # Vishnerevsky 27.08.2017
             #crop = cv_image
