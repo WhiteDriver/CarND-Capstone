@@ -10,11 +10,11 @@ from tensorflow.contrib.layers import flatten
 class TLClassifier(object):
     def __init__(self):
 
-        self.pixel_threshold = 8 # Thresholding value for colored pixels
+        self.pixel_threshold = 5 # Thresholding value for colored pixels
 
         # Manually set boundaries for colors
         self.boundaries = [
-            ([140, 60, 150], [180, 140, 255]), # Red
+            ([140, 60, 150], [200, 160, 255]), # Red
         ]
         
         self.x = tf.placeholder(tf.float32, (None, 65, 137, 3))
@@ -121,6 +121,7 @@ class TLClassifier(object):
                 hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
                 mask = cv2.inRange(hsv_image, lower, upper)
                 color_detection = cv2.countNonZero(mask)
+                rospy.logwarn(color_detection)
 
                 # Threshold detected red colors
                 if color_detection > self.pixel_threshold:
