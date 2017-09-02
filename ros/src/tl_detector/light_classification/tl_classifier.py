@@ -1,4 +1,5 @@
 import rospy
+import rospkg
 from styx_msgs.msg import TrafficLight
 import numpy as np
 import cv2
@@ -20,7 +21,8 @@ class TLClassifier(object):
         self.y = tf.placeholder(tf.int32, (None))
         #one_hot_y = tf.one_hot(y_train, 4)
         self.logits = self.LeNet(tf.cast(self.x, tf.float32))
-        self.save_file = '/home/valtgun/abc/CarND-Capstone/ros/src/tl_detector/light_classification/save/model.ckpt'
+        rospack = rospkg.RosPack()
+        self.save_file = str(rospack.get_path('tl_detector'))+'/light_classification/save/model.ckpt'
         self.saver = tf.train.Saver()
         self.init = tf.global_variables_initializer()
         self.session = tf.Session()
