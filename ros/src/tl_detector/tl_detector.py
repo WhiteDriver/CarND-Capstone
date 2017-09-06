@@ -9,9 +9,10 @@ from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
-from traffic_light_config import config
+#from traffic_light_config import config # TODO: Need to check if still valid after merge
 import math
 import numpy as np
+import yaml # From Udacity update
 
 STATE_COUNT_THRESHOLD = 5
 
@@ -37,12 +38,18 @@ class TLDetector(object):
         ''' Commented to not use
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
         '''
-        sub6 = rospy.Subscriber('/camera/image_raw', Image, self.image_cb)
+        # Udacity changed from /camera/image_raw
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+        config_string = rospy.get_param("/traffic_light_config") # From Udacity update
+        self.config = yaml.load(config_string) # From Udacity update
 
         # Edited by Vishnerevsky 29.08.2017
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', TrafficLight, queue_size=1)
-        self.tl_tx = TrafficLight()
+		# TODO: Need to check if still valid after merge
+		# Udacity changes to int32
+		# self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
+        self.tl_tx = TrafficLight()
         self.deb_img = rospy.Publisher('/deb_img', Image, queue_size=1)
 
         self.bridge = CvBridge()
@@ -179,10 +186,6 @@ class TLDetector(object):
 
 
 
-
-
-
-
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -222,11 +225,10 @@ class TLDetector(object):
 
         """
 
-        fx = config.camera_info.focal_length_x
-        fy = config.camera_info.focal_length_y
-
-        image_width = config.camera_info.image_width
-        image_height = config.camera_info.image_height
+        fx = self.config['camera_info']['focal_length_x']
+        fy = self.config['camera_info']['focal_length_y']
+        image_width = self.config['camera_info']['image_width']
+        image_height = self.config['camera_info']['image_height']
 
         cord_x = point_in_world[0]
         cord_y = point_in_world[1]
@@ -329,18 +331,18 @@ class TLDetector(object):
 
         #TODO use light location to zoom in on traffic light in image
         if ((x is None) or (y is None) or (x < 0) or (y<0) or
-            (x>config.camera_info.image_width) or (y>config.camera_info.image_height)):
+            (x>self.config['camera_info']['image_width']) or (y>self.config['camera_info']['image_height'])):
             return TrafficLight.UNKNOWN
         else:
-            # 800x600
-            left = max(0, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
-            right = min(config.camera_info.image_width/2 - int(self.deviation_of_light)*10+200, config.camera_info.image_width) # Vishnerevsky 27.08.2017
+            #rospy.loginfo('shape' + str(cv_image.shape))
+            left = max(0, self.config['camera_info']['image_width']/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
+            right = min(self.config['camera_info']['image_width']/2 - int(self.deviation_of_light)*10+200, self.config['camera_info']['image_width']) # Vishnerevsky 27.08.2017
 
             vertical = int(y - (45.0-self.distance_to_light)*150.0/35.0)
             if vertical<0:
                 vertical = 0
-            top = min(vertical, config.camera_info.image_height-1)
-            bottom = min(300 + vertical, config.camera_info.image_height)
+            top = min(vertical, self.config['camera_info']['image_height']-1)
+            bottom = min(300 + vertical, self.config['camera_info']['image_height'])
             crop = cv_image[top:bottom, left:right]
             # Vishnerevsky 27.08.2017
             #crop = cv_image
@@ -360,7 +362,10 @@ class TLDetector(object):
 
         """
         light = None
-        light_positions = config.light_positions
+
+        #light_positions = config.light_positions  # TODO: Need to check if still valid after merge
+		# The line above is our old config, seems like udacity changed the light publishing
+        light_positions = self.config['light_positions'] # This is Udacioty code
 
         # Valtgun attribute lights to waypoints
         light_pos_wp = []

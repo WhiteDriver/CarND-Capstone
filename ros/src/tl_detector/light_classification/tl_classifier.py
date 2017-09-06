@@ -14,9 +14,9 @@ class TLClassifier(object):
 
         # Manually set boundaries for colors
         self.boundaries = [
-            ([140, 60, 150], [200, 160, 255]), # Red
+            ([140, 60, 150], [200, 160, 255]) # Red
         ]
-        
+
         self.x = tf.placeholder(tf.float32, (None, 65, 137, 3))
         self.y = tf.placeholder(tf.int32, (None))
         #one_hot_y = tf.one_hot(y_train, 4)
