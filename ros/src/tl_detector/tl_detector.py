@@ -9,9 +9,10 @@ from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
-from traffic_light_config import config
+from traffic_light_config import config # TODO: Need to check if still valid after merge
 import math
 import numpy as np
+import yaml # From Udacity update
 
 STATE_COUNT_THRESHOLD = 5
 
@@ -39,10 +40,16 @@ class TLDetector(object):
         '''
         sub6 = rospy.Subscriber('/camera/image_raw', Image, self.image_cb)
 
+        config_string = rospy.get_param("/traffic_light_config") # From Udacity update
+        self.config = yaml.load(config_string) # From Udacity update
+
         # Edited by Vishnerevsky 29.08.2017
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', TrafficLight, queue_size=1)
+		# TODO: Need to check if still valid after merge
+		# Udacity changes to int32
+		# self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
+		
         self.tl_tx = TrafficLight()
-
         self.deb_img = rospy.Publisher('/deb_img', Image, queue_size=1)
 
         self.bridge = CvBridge()
@@ -179,10 +186,6 @@ class TLDetector(object):
 
 
 
-
-
-
-
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -222,11 +225,10 @@ class TLDetector(object):
 
         """
 
-        fx = config.camera_info.focal_length_x
-        fy = config.camera_info.focal_length_y
-
-        image_width = config.camera_info.image_width
-        image_height = config.camera_info.image_height
+        fx = self.config['camera_info']['focal_length_x']
+        fy = self.config['camera_info']['focal_length_y']
+        image_width = self.config['camera_info']['image_width']
+        image_height = self.config['camera_info']['image_height']
 
         cord_x = point_in_world[0]
         cord_y = point_in_world[1]
@@ -360,8 +362,11 @@ class TLDetector(object):
 
         """
         light = None
-        light_positions = config.light_positions
 
+        #light_positions = config.light_positions  # TODO: Need to check if still valid after merge
+		# The line above is our old config, seems like udacity changed the light publishing
+		light_positions = self.config['light_positions'] # This is Udacioty code
+		
         # Valtgun attribute lights to waypoints
         light_pos_wp = []
         if self.waypoints is not None:
