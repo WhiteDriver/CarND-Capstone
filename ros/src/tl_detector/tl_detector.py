@@ -331,18 +331,18 @@ class TLDetector(object):
 
         #TODO use light location to zoom in on traffic light in image
         if ((x is None) or (y is None) or (x < 0) or (y<0) or
-            (x>config.camera_info.image_width) or (y>config.camera_info.image_height)):
+            (x>self.config['camera_info']['image_width']) or (y>self.config['camera_info']['image_height'])):
             return TrafficLight.UNKNOWN
         else:
-            # 800x600
-            left = max(0, config.camera_info.image_width/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
-            right = min(config.camera_info.image_width/2 - int(self.deviation_of_light)*10+200, config.camera_info.image_width) # Vishnerevsky 27.08.2017
+            #rospy.loginfo('shape' + str(cv_image.shape))
+            left = max(0, self.config['camera_info']['image_width']/2 - int(self.deviation_of_light)*10-200) # Vishnerevsky 27.08.2017
+            right = min(self.config['camera_info']['image_width']/2 - int(self.deviation_of_light)*10+200, self.config['camera_info']['image_width']) # Vishnerevsky 27.08.2017
 
             vertical = int(y - (45.0-self.distance_to_light)*150.0/35.0)
             if vertical<0:
                 vertical = 0
-            top = min(vertical, config.camera_info.image_height-1)
-            bottom = min(300 + vertical, config.camera_info.image_height)
+            top = min(vertical, self.config['camera_info']['image_height']-1)
+            bottom = min(300 + vertical, self.config['camera_info']['image_height'])
             crop = cv_image[top:bottom, left:right]
             # Vishnerevsky 27.08.2017
             #crop = cv_image
