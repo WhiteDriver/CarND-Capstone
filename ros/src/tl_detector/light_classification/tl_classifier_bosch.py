@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.contrib.layers import flatten
 
 
-class TLClassifier(object):
+class TLClassifierBosch(object):
     def __init__(self):
 
         self.pixel_threshold = 5 # Thresholding value for colored pixels
@@ -16,17 +16,19 @@ class TLClassifier(object):
         self.boundaries = [
             ([140, 60, 150], [200, 160, 255]) # Red
         ]
+        self.graph_bosch = tf.Graph()
+        with self.graph_bosch.as_default():
+            self.x = tf.placeholder(tf.float32, (None, 65, 137, 3))
+            self.y = tf.placeholder(tf.int32, (None))
+            #one_hot_y = tf.one_hot(y_train, 4)
+            self.logits = self.LeNet(tf.cast(self.x, tf.float32))
+            rospack = rospkg.RosPack()
+            self.save_file = str(rospack.get_path('tl_detector'))+'/light_classification/save_bosch/model.ckpt'
+            self.saver = tf.train.Saver()
+            self.init = tf.global_variables_initializer()
+            self.session = tf.Session()
+            self.saver.restore(self.session, self.save_file)
 
-        self.x = tf.placeholder(tf.float32, (None, 65, 137, 3))
-        self.y = tf.placeholder(tf.int32, (None))
-        #one_hot_y = tf.one_hot(y_train, 4)
-        self.logits = self.LeNet(tf.cast(self.x, tf.float32))
-        rospack = rospkg.RosPack()
-        self.save_file = str(rospack.get_path('tl_detector'))+'/light_classification/save/model.ckpt'
-        self.saver = tf.train.Saver()
-        self.init = tf.global_variables_initializer()
-        self.session = tf.Session()
-        self.saver.restore(self.session, self.save_file)
 
     def LeNet(self, x):
         # Hyperparameters
@@ -98,35 +100,19 @@ class TLClassifier(object):
         # Beginning of imported code from Vladimir's neural network
         # resize and prepare image
         res = None
-        if (image.shape[0] == 1096 and image.shape[1] == 1368): # rosbag
-            image = image[100:image.shape[0]-350, 0:image.shape[1]]
-            res = cv2.resize(image,None,fx=0.1, fy=0.1, interpolation = cv2.INTER_CUBIC)
-            inp_img = res.reshape(1, 65, 137, 3)
+        rospy.logerr('Img size: ' + str(image.shape))
+        image = image[100:image.shape[0]-300, 300:image.shape[1]-300]
+        res = cv2.resize(image,(137, 65), interpolation = cv2.INTER_CUBIC)
+        inp_img = res.reshape(1, 65, 137, 3)
+        with self.graph_bosch.as_default():
             out_logits = self.session.run(self.logits, feed_dict={self.x: inp_img})
-            out_idx = np.argmax(out_logits)
-            # Convert from logits to traffic light colors
-            if (out_idx == 0):
-                state = TrafficLight.RED
-            elif (out_idx == 2):
-                state = TrafficLight.YELLOW
-            elif (out_idx == 1):
-                state = TrafficLight.GREEN
-
-        ##else: # simulator cropped
-        '''
-            for (lower, upper) in self.boundaries:
-                lower = np.array(lower, dtype = "uint8")
-                upper = np.array(upper, dtype = "uint8")
-
-                # Count boundary colors in image
-                hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-                mask = cv2.inRange(hsv_image, lower, upper)
-                color_detection = cv2.countNonZero(mask)
-                rospy.logwarn(color_detection)
-
-                # Threshold detected red colors
-                if color_detection > self.pixel_threshold:
-                    state = TrafficLight.RED
-        '''
+        out_idx = np.argmax(out_logits)
+        # Convert from logits to traffic light colors
+        if (out_idx == 0):
+            state = TrafficLight.RED
+        elif (out_idx == 2):
+            state = TrafficLight.YELLOW
+        elif (out_idx == 1):
+            state = TrafficLight.GREEN
 
         return state
