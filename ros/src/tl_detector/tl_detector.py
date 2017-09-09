@@ -348,11 +348,17 @@ class TLDetector(object):
             #crop = cv_image[top:bottom, left:right]
             # Vishnerevsky 27.08.2017
             #crop = cv_image
+            left = 67
+            right = left+137*5
+            top = 0
+            bottom = 65*5
+            crop = cv_image[top:bottom, left:right]
+            crop = cv2.resize(crop,(137, 65), interpolation = cv2.INTER_CUBIC)
 
-            self.deb_img.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+            #self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Get classification
-        return self.light_classifier_bosch.get_classification(cv_image)
+        return self.light_classifier_bosch.get_classification(crop)
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its

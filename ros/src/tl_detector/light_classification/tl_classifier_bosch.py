@@ -100,10 +100,10 @@ class TLClassifierBosch(object):
         # Beginning of imported code from Vladimir's neural network
         # resize and prepare image
         res = None
-        rospy.logerr('Img size: ' + str(image.shape))
-        image = image[100:image.shape[0]-300, 300:image.shape[1]-300]
-        res = cv2.resize(image,(137, 65), interpolation = cv2.INTER_CUBIC)
-        inp_img = res.reshape(1, 65, 137, 3)
+        #rospy.logerr('Img size: ' + str(image.shape))
+        #image = image[100:image.shape[0]-300, 300:image.shape[1]-300]
+        #res = cv2.resize(image,(137, 65), interpolation = cv2.INTER_CUBIC)
+        inp_img = image.reshape(1, 65, 137, 3)
         with self.graph_bosch.as_default():
             out_logits = self.session.run(self.logits, feed_dict={self.x: inp_img})
         out_idx = np.argmax(out_logits)
