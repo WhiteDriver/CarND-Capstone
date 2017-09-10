@@ -355,7 +355,7 @@ class TLDetector(object):
             #crop = cv_image[top:bottom, left:right]
             #crop = cv2.resize(crop,(137, 65), interpolation = cv2.INTER_CUBIC)
             # Cropped for Vladimir's trained simulaotr images
-            crop = cv2.resize(crop,(300, 200), interpolation = cv2.INTER_CUBIC)
+            crop = cv2.resize(cv_image,(300, 200), interpolation = cv2.INTER_CUBIC)
 
             self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
