@@ -7,7 +7,7 @@ from styx_msgs.msg import Lane
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
-from light_classification.tl_classifier_bosch import TLClassifierBosch
+from light_classification.tl_classifier_vlad import TLClassifierVlad
 import tf
 import cv2
 #from traffic_light_config import config # TODO: Need to check if still valid after merge
@@ -55,7 +55,7 @@ class TLDetector(object):
 
         self.bridge = CvBridge()
         self.light_classifier = TLClassifier()
-        self.light_classifier_bosch = TLClassifierBosch()
+        self.light_classifier_vlad = TLClassifierVlad()
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
@@ -348,17 +348,19 @@ class TLDetector(object):
             #crop = cv_image[top:bottom, left:right]
             # Vishnerevsky 27.08.2017
             #crop = cv_image
-            left = 67
-            right = left+137*5
-            top = 0
-            bottom = 65*5
-            crop = cv_image[top:bottom, left:right]
-            crop = cv2.resize(crop,(137, 65), interpolation = cv2.INTER_CUBIC)
+            #left = 67
+            #right = left+137*5
+            #top = 0
+            #bottom = 65*5
+            #crop = cv_image[top:bottom, left:right]
+            #crop = cv2.resize(crop,(137, 65), interpolation = cv2.INTER_CUBIC)
+            # Cropped for Vladimir's trained simulaotr images
+            crop = cv2.resize(crop,(300, 200), interpolation = cv2.INTER_CUBIC)
 
-            #self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
+            self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Get classification
-        return self.light_classifier_bosch.get_classification(crop)
+        return self.light_classifier_vlad.get_classification(crop)
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
