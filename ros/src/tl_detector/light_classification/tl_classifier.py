@@ -17,7 +17,7 @@ class TLClassifier(object):
             ([140, 60, 150], [200, 160, 255]) # Red
         ]
 
-        self.x = tf.placeholder(tf.float32, (None, 65, 137, 3))
+        self.x = tf.placeholder(tf.float32, (None, 200, 300, 3))
         self.y = tf.placeholder(tf.int32, (None))
         #one_hot_y = tf.one_hot(y_train, 4)
         self.logits = self.LeNet(tf.cast(self.x, tf.float32))
@@ -34,8 +34,8 @@ class TLClassifier(object):
         sigma = 0.1
 
         # Layer 1: Convolutional. Input = 32x32x3. Output = 28x28x6.
-        conv1_W = tf.Variable(tf.truncated_normal(shape=(5, 5, 3, 3), mean = mu, stddev = sigma))
-        conv1_b = tf.Variable(tf.zeros(3))
+        conv1_W = tf.Variable(tf.truncated_normal(shape=(5, 5, 3, 10), mean = mu, stddev = sigma))
+        conv1_b = tf.Variable(tf.zeros(10))
         conv1   = tf.nn.conv2d(x, conv1_W, strides=[1, 1, 1, 1], padding='VALID') + conv1_b
 
         # Activation.
@@ -45,8 +45,8 @@ class TLClassifier(object):
         conv1 = tf.nn.max_pool(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
 
         # Layer 2: Convolutional. Output = 10x10x16.
-        conv2_W = tf.Variable(tf.truncated_normal(shape=(5, 5, 3, 5), mean = mu, stddev = sigma))
-        conv2_b = tf.Variable(tf.zeros(5))
+        conv2_W = tf.Variable(tf.truncated_normal(shape=(5, 5, 10, 20), mean = mu, stddev = sigma))
+        conv2_b = tf.Variable(tf.zeros(20))
         conv2   = tf.nn.conv2d(conv1, conv2_W, strides=[1, 1, 1, 1], padding='VALID') + conv2_b
 
         # Activation.
@@ -55,27 +55,40 @@ class TLClassifier(object):
         # Pooling. Input = 10x10x16. Output = 5x5x16.
         conv2 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
 
+        # Layer 3: Convolutional. 
+        conv3_W = tf.Variable(tf.truncated_normal(shape=(3, 3, 20, 30), mean = mu, stddev = sigma))
+        conv3_b = tf.Variable(tf.zeros(30))
+        conv3   = tf.nn.conv2d(conv2, conv3_W, strides=[1, 1, 1, 1], padding='VALID') + conv3_b    
+
+        # Activation.
+        conv3 = tf.nn.relu(conv3)   
+
+        # Pooling. 
+        conv3 = tf.nn.max_pool(conv3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
+
         # Flatten. Input = 5x5x16. Output = 400.
-        fc0   = flatten(conv2)
+        fc0   = flatten(conv3)
 
         # Layer 3: Fully Connected. Input = 400. Output = 200.
-        fc1_W = tf.Variable(tf.truncated_normal(shape=(2015, 50), mean = mu, stddev = sigma))
-        fc1_b = tf.Variable(tf.zeros(50))
+        fc1_W = tf.Variable(tf.truncated_normal(shape=(23100, 100), mean = mu, stddev = sigma))
+        fc1_b = tf.Variable(tf.zeros(100))
         fc1   = tf.matmul(fc0, fc1_W) + fc1_b
 
         # Activation.
         fc1    = tf.nn.relu(fc1)
+        #fc1    = tf.nn.dropout(fc1, keep_prob)
 
         # Layer 4: Fully Connected. Input = 200. Output = 150.
-        fc2_W  = tf.Variable(tf.truncated_normal(shape=(50, 25), mean = mu, stddev = sigma))
-        fc2_b  = tf.Variable(tf.zeros(25))
+        fc2_W  = tf.Variable(tf.truncated_normal(shape=(100, 50), mean = mu, stddev = sigma))
+        fc2_b  = tf.Variable(tf.zeros(50))
         fc2    = tf.matmul(fc1, fc2_W) + fc2_b
 
         # Activation.
         fc2    = tf.nn.relu(fc2)
+        #fc2    = tf.nn.dropout(fc2, keep_prob)
 
         # Layer 5: Fully Connected. Input = 150. Output = 10.
-        fc3_W  = tf.Variable(tf.truncated_normal(shape=(25, 4), mean = mu, stddev = sigma))
+        fc3_W  = tf.Variable(tf.truncated_normal(shape=(50, 4), mean = mu, stddev = sigma))
         fc3_b  = tf.Variable(tf.zeros(4))
         logits = tf.matmul(fc2, fc3_W) + fc3_b
         return logits
@@ -101,7 +114,7 @@ class TLClassifier(object):
         if (image.shape[0] == 1096 and image.shape[1] == 1368): # rosbag
             image = image[100:image.shape[0]-350, 0:image.shape[1]]
             res = cv2.resize(image,None,fx=0.1, fy=0.1, interpolation = cv2.INTER_CUBIC)
-            inp_img = res.reshape(1, 65, 137, 3)
+            inp_img = res.reshape(1, 200, 300, 3)
             out_logits = self.session.run(self.logits, feed_dict={self.x: inp_img})
             out_idx = np.argmax(out_logits)
             # Convert from logits to traffic light colors
