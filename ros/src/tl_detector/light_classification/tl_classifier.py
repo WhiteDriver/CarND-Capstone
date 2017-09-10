@@ -112,7 +112,8 @@ class TLClassifier(object):
             elif (out_idx == 1):
                 state = TrafficLight.GREEN
 
-        else: # simulator cropped
+        ##else: # simulator cropped
+        '''
             for (lower, upper) in self.boundaries:
                 lower = np.array(lower, dtype = "uint8")
                 upper = np.array(upper, dtype = "uint8")
@@ -126,6 +127,6 @@ class TLClassifier(object):
                 # Threshold detected red colors
                 if color_detection > self.pixel_threshold:
                     state = TrafficLight.RED
-
+        '''
 
         return state
