@@ -14,6 +14,7 @@ import cv2
 import math
 import numpy as np
 import yaml # From Udacity update
+import time
 
 STATE_COUNT_THRESHOLD = 5
 
@@ -54,7 +55,7 @@ class TLDetector(object):
         self.deb_img = rospy.Publisher('/deb_img', Image, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
+        #self.light_classifier = TLClassifier()     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! UNCOMMENT !!!!!!!!!!!!!
         self.light_classifier_bosch = TLClassifierBosch()
         self.listener = tf.TransformListener()
 
@@ -71,11 +72,23 @@ class TLDetector(object):
         self.distance_to_light = 1000.0
         self.deviation_of_light = 0.0
 
+        # Vishnerevsky 10.09.2017:
+        self.ImageCounter = 0
+        self.time = None
+        self.TL_GT_State = None
+        sub_123 = rospy.Subscriber('traffic_light_GT', Int32, self.tl_gt_cb)
+
         self.IGNORE_FAR_LIGHT = 100.0
 
         sub_bagfile = rospy.Subscriber('/image_raw', Image, self.image_cb_bag)
 
         rospy.spin()
+
+
+    # Vishnerevsky 10.09.2017:
+    def tl_gt_cb(self, msg):
+        self.TL_GT_State = msg.data
+        #rospy.logerr(self.TL_GT_State)
 
     def image_cb_bag(self, msg):
         cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -352,10 +365,17 @@ class TLDetector(object):
             right = left+137*5
             top = 0
             bottom = 65*5
-            crop = cv_image[top:bottom, left:right]
-            crop = cv2.resize(crop,(137, 65), interpolation = cv2.INTER_CUBIC)
+            #crop = cv_image[top:bottom, left:right] # Vishnerevsky 09.09.2017
+            crop = cv_image # Vishnerevsky 09.09.2017
+            crop = cv2.resize(crop,(300, 200), interpolation = cv2.INTER_CUBIC) # Vishnerevsky 09.09.2017
+            #crop = cv2.cvtColor(crop, cv2.COLOR_BGR2HLS)
+            self.time = time.clock() 
+            #rospy.logwarn(int(self.time*1000000))
+            cv2.imwrite('Unknown/' + str(int(self.time*1000000)) + '.jpg', cv_image)
+            rospy.logerr('SAVED')
 
-            #self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
+
+            self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Get classification
         return self.light_classifier_bosch.get_classification(crop)
@@ -430,6 +450,8 @@ class TLDetector(object):
         delta_x = l_p[0] - wp.x
         delta_y = l_p[1] - wp.y
         return math.sqrt(delta_x*delta_x + delta_y*delta_y)
+
+
 
 if __name__ == '__main__':
     try:
