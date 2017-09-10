@@ -94,24 +94,8 @@ class TLDetector(object):
 
     def pose_cb(self, msg):
         self.pose = msg
-
-    def waypoints_cb(self, waypoints):
-        self.waypoints = waypoints
-
-    ''' Commented to not use
-    def traffic_cb(self, msg):
-        self.lights = msg.lights
-    '''
-    def image_cb(self, msg):
-        """Identifies red lights in the incoming camera image and publishes the index
-            of the waypoint closest to the red light to /traffic_waypoint
-
-        Args:
-            msg (Image): image from car-mounted camera
-
-        """
-        self.has_image = True
-        self.camera_image = msg
+        if (self.camera_image is None):
+            return
         light_wp, state = self.process_traffic_lights()
 
         if (state == 0):
@@ -187,6 +171,23 @@ class TLDetector(object):
                 self.state_count += 1
 
 
+    def waypoints_cb(self, waypoints):
+        self.waypoints = waypoints
+
+    ''' Commented to not use
+    def traffic_cb(self, msg):
+        self.lights = msg.lights
+    '''
+    def image_cb(self, msg):
+        """Identifies red lights in the incoming camera image and publishes the index
+            of the waypoint closest to the red light to /traffic_waypoint
+
+        Args:
+            msg (Image): image from car-mounted camera
+
+        """
+        self.has_image = True
+        self.camera_image = msg
 
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
