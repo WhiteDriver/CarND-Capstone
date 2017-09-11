@@ -30,7 +30,7 @@ class WaypointUpdater(object):
         rospy.init_node('waypoint_updater')
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=1)
-        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb, queue_size=1)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
@@ -56,7 +56,7 @@ class WaypointUpdater(object):
         self.traffic_lights_S = None # State of the traffic light
 
         # Vishnerevsky 29.08.2017: Add subscriber for '/traffic_waypoint' topic
-        rospy.Subscriber('/traffic_waypoint', TrafficLight, self.tl_state_cb)
+        rospy.Subscriber('/traffic_waypoint', TrafficLight, self.tl_state_cb, queue_size=1)
         self.true_tl_state = None # True state of the traffic light
         self.true_tl_distx = 1000 # Distance to the nearest traffic light (X in vehicle coordinate system)
 
