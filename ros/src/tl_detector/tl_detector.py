@@ -30,7 +30,7 @@ class TLDetector(object):
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb, queue_size=1)
 
         '''
-        /vehicle/traffic_lights provides you with the location of the traffic light in 3D map space and 
+        /vehicle/traffic_lights provides you with the location of the traffic light in 3D map space and
         helps you acquire an accurate ground truth data source for the traffic light
         classifier by sending the current color state of all traffic lights in the
         simulator. When testing on the vehicle, the color state will not be available. You'll need to
@@ -329,6 +329,7 @@ class TLDetector(object):
 
         self.camera_image.encoding = "rgb8"
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        '''
 
         x, y = self.project_to_image_plane(light)
 
@@ -361,6 +362,8 @@ class TLDetector(object):
             self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Get classification
+        '''
+        crop = cv2.resize(cv_image,(300, 200), interpolation = cv2.INTER_CUBIC)
         return self.light_classifier_vlad.get_classification(crop)
 
     def process_traffic_lights(self):
