@@ -109,7 +109,7 @@ class TLClassifier(object):
         if (image.shape[0] == 1096 and image.shape[1] == 1368): # rosbag
             image = image[100:image.shape[0]-350, 0:image.shape[1]]
             res = cv2.resize(image,None,fx=0.1, fy=0.1, interpolation = cv2.INTER_CUBIC)
-            res = self.Max_Min(res) # Normalization !!!!!!!!!! Normalization !!!!!!!!!! Normalization !!!!!!!!!!
+            #res = self.Max_Min(res)
             inp_img = res.reshape(1, 65, 137, 3)
             out_logits = self.session.run(self.logits, feed_dict={self.x: inp_img})
             out_idx = np.argmax(out_logits)

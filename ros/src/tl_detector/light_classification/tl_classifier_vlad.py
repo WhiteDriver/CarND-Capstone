@@ -64,15 +64,15 @@ class TLClassifierVlad(object):
         # Pooling. Input = 10x10x16. Output = 5x5x16.
         conv2 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
 
-        # Layer 3: Convolutional. 
+        # Layer 3: Convolutional.
         conv3_W = tf.Variable(tf.truncated_normal(shape=(3, 3, 32, 64), mean = mu, stddev = sigma))
         conv3_b = tf.Variable(tf.zeros(64))
-        conv3   = tf.nn.conv2d(conv2, conv3_W, strides=[1, 1, 1, 1], padding='VALID') + conv3_b    
+        conv3   = tf.nn.conv2d(conv2, conv3_W, strides=[1, 1, 1, 1], padding='VALID') + conv3_b
 
         # Activation.
-        conv3 = tf.nn.relu(conv3)   
+        conv3 = tf.nn.relu(conv3)
 
-        # Pooling. 
+        # Pooling.
         conv3 = tf.nn.max_pool(conv3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
 
         # Flatten. Input = 5x5x16. Output = 400.
@@ -105,7 +105,7 @@ class TLClassifierVlad(object):
         # Layer 5: Fully Connected. Input = 150. Output = 10.
         fc4_W  = tf.Variable(tf.truncated_normal(shape=(50, 4), mean = mu, stddev = sigma))
         fc4_b  = tf.Variable(tf.zeros(4))
-        logits = tf.matmul(fc3, fc4_W) + fc4_b        
+        logits = tf.matmul(fc3, fc4_W) + fc4_b
 
         return logits
 
@@ -134,7 +134,7 @@ class TLClassifierVlad(object):
         inp_img = image.reshape(1, 200, 300, 3)
         with self.graph_vlad.as_default():
             out_logits = self.session.run(self.logits, feed_dict={self.X: inp_img})
-        rospy.logwarn(out_logits)
+        #rospy.logwarn(out_logits)
         out_idx = np.argmax(out_logits)
         # Convert from logits to traffic light colors
         if (out_idx == 0):
