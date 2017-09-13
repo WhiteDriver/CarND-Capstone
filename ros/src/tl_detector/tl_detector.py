@@ -14,8 +14,9 @@ import cv2
 import math
 import numpy as np
 import yaml # From Udacity update
+import time
 
-STATE_COUNT_THRESHOLD = 5
+STATE_COUNT_THRESHOLD = 1
 
 class TLDetector(object):
     def __init__(self):
@@ -30,7 +31,7 @@ class TLDetector(object):
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb, queue_size=1)
 
         '''
-        /vehicle/traffic_lights provides you with the location of the traffic light in 3D map space and
+        /vehicle/traffic_lights provides you with the location of the traffic light in 3D map space and 
         helps you acquire an accurate ground truth data source for the traffic light
         classifier by sending the current color state of all traffic lights in the
         simulator. When testing on the vehicle, the color state will not be available. You'll need to
@@ -71,11 +72,22 @@ class TLDetector(object):
         self.distance_to_light = 1000.0
         self.deviation_of_light = 0.0
 
+        # Vishnerevsky 10.09.2017:
+        self.ImageCounter = 0
+        self.time = None
+        self.TL_GT_State = None
+        sub_123 = rospy.Subscriber('traffic_light_GT', Int32, self.tl_gt_cb)
+
         self.IGNORE_FAR_LIGHT = 100.0
 
         sub_bagfile = rospy.Subscriber('/image_raw', Image, self.image_cb_bag, queue_size=1)
 
         rospy.spin()
+
+    # Vishnerevsky 10.09.2017:
+    def tl_gt_cb(self, msg):
+        self.TL_GT_State = msg.data
+        #rospy.logerr(self.TL_GT_State)
 
     def image_cb_bag(self, msg):
         cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -329,7 +341,6 @@ class TLDetector(object):
 
         self.camera_image.encoding = "rgb8"
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-        '''
 
         x, y = self.project_to_image_plane(light)
 
@@ -356,14 +367,25 @@ class TLDetector(object):
             #bottom = 65*5
             #crop = cv_image[top:bottom, left:right]
             #crop = cv2.resize(crop,(137, 65), interpolation = cv2.INTER_CUBIC)
+
+            self.time = time.clock() 
+            #rospy.logwarn(int(self.time*1000000))
+            #if (self.TL_GT_State == 0):
+            #    cv2.imwrite('SavedImages/red/' + str(int(self.time*1000000)) + '.jpg', cv_image)
+            #    rospy.logerr('NOT SAVED TO RED')
+            #if (self.TL_GT_State == 1):
+            #    cv2.imwrite('SavedImages/yellow/' + str(int(self.time*1000000)) + '.jpg', cv_image)
+            #    rospy.logerr('SAVED TO YELLOW')
+            #if (self.TL_GT_State == 2):
+            #    cv2.imwrite('SavedImages/green/' + str(int(self.time*1000000)) + '.jpg', cv_image)
+            #    rospy.logerr('NOT SAVED TO GREEN')
+
             # Cropped for Vladimir's trained simulaotr images
             crop = cv2.resize(cv_image,(300, 200), interpolation = cv2.INTER_CUBIC)
 
             self.deb_img.publish(self.bridge.cv2_to_imgmsg(crop, "bgr8"))
             #rosrun image_view image_view image:=/deb_img                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Get classification
-        '''
-        crop = cv2.resize(cv_image,(300, 200), interpolation = cv2.INTER_CUBIC)
         return self.light_classifier_vlad.get_classification(crop)
 
     def process_traffic_lights(self):
