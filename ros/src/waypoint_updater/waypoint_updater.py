@@ -49,7 +49,7 @@ class WaypointUpdater(object):
 
         # TODO: Add other member variables you need below
         self.last_waypoints = None
-        self.points_in_back = 10
+        self.points_in_back = 0
         # Vishnerevsky & Omar 26.08.2017
         self.traffic_lights_X = None
         self.traffic_lights_Y = None
@@ -125,11 +125,11 @@ class WaypointUpdater(object):
 
             #rospy.logerr(dist_to_the_light)
             # Vishnerevsky 29.08.2017: Conditions with true_tl_state
-            if (((dist_to_the_light < 50.0) and (dist_to_the_light >= 5.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
+            if (((dist_to_the_light < 15.0) and (dist_to_the_light >= 5.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
                 #rospy.logwarn('SLOW!!!!')
                 self.velocity_reference = 1.7
                 #rospy.logerr(self.traffic_lights_S)
-            elif (((dist_to_the_light < 5.0) and (dist_to_the_light > 0.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
+            elif (((dist_to_the_light < 5.0) and (dist_to_the_light > 0.5)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
                 self.velocity_reference = 0.0
                 #rospy.logwarn('STOP!!!!')
                 #rospy.logerr(self.traffic_lights_S)
