@@ -34,9 +34,9 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
-	    # Omar 25.08.2017 Subscribed to Traffic lights waypoints
-        #rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-	    # Omar 25.08.2017 add a variable for the car current position
+	# Omar 25.08.2017 Subscribed to Traffic lights waypoints
+        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
+	# Omar 25.08.2017 add a variable for the car current position
         self.pose = None
         # Omar 25.08.2017 add a variable lane
         self.lane = Lane()
@@ -59,6 +59,11 @@ class WaypointUpdater(object):
         rospy.Subscriber('/traffic_waypoint', TrafficLight, self.tl_state_cb, queue_size=1)
         self.true_tl_state = None # True state of the traffic light
         self.true_tl_distx = 1000 # Distance to the nearest traffic light (X in vehicle coordinate system)
+
+        # Vishnerevsky 10.09.2017: 
+        # Traffic light groundtruth:
+        self.TL_ST_GT = 0
+        self.tl_gt_pub = rospy.Publisher('traffic_light_GT', Int32, queue_size=1)
 
         rospy.spin()
 
@@ -108,6 +113,16 @@ class WaypointUpdater(object):
             else:
                 self.velocity_reference = 20.0
             '''
+
+            # Vishnerevsky 10.09.2017: Groundtruth publish:
+            #rospy.logwarn(dist_to_the_light)
+            if (dist_to_the_light < 50.0):
+                #rospy.logerr(self.TL_ST_GT)
+                self.tl_gt_pub.publish(self.TL_ST_GT)
+            else:
+                self.TL_ST_GT = 4
+                self.tl_gt_pub.publish(self.TL_ST_GT)
+
             #rospy.logerr(dist_to_the_light)
             # Vishnerevsky 29.08.2017: Conditions with true_tl_state
             if (((dist_to_the_light < 50.0) and (dist_to_the_light >= 5.0)) and ((self.traffic_lights_S == 0) or (self.traffic_lights_S == 1))):
@@ -138,8 +153,17 @@ class WaypointUpdater(object):
         self.last_waypoints = Lane
 
     def traffic_cb(self, msg):
-        pass
-
+        #pass
+        # Vishnerevsky 25.08.2017
+        if self.pose is not None:
+            # TODO: Callback for /traffic_waypoint message. Implement
+	    # Omar 25.08.2017 Calculate the closest Waypoint to the current car position
+	    Closest_TrafficLight = self.closest_waypoint(self.pose, msg.lights)
+	    # Omar 25.08.2017 Check if the closest Traffic light is red
+            #rospy.logerr(msg.lights[Closest_TrafficLight].state)
+	    # Omar 25.08.2017 Check if the closest Traffic light is red
+            #rospy.logwarn(msg.lights[Closest_TrafficLight].state)         #LOGWARN!!!!!!
+            self.TL_ST_GT = msg.lights[Closest_TrafficLight].state
 
     '''
         # Vishnerevsky 25.08.2017
