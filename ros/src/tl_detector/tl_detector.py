@@ -147,6 +147,7 @@ class TLDetector(object):
         self.state_count += 1
         '''
         # Vishnerevsky 30.08.2017: Treshold for 0 state
+        '''
         if state == 0:
             self.state = state
             self.state_count = 0
@@ -181,7 +182,17 @@ class TLDetector(object):
                 self.tl_tx.state = self.state
                 self.upcoming_red_light_pub.publish(self.tl_tx)
                 self.state_count += 1
-
+        '''
+        # Now treshold is unnecessary:
+        self.state = state
+        light_wp = light_wp if state == TrafficLight.RED else -1
+        self.last_wp = light_wp
+        if (light_wp >=0):
+            self.tl_tx.pose.pose.position.x = self.waypoints.waypoints[self.last_wp].pose.pose.position.x
+            self.tl_tx.pose.pose.position.y = self.waypoints.waypoints[self.last_wp].pose.pose.position.y
+            self.tl_tx.pose.pose.position.z = self.waypoints.waypoints[self.last_wp].pose.pose.position.z
+        self.tl_tx.state = self.state
+        self.upcoming_red_light_pub.publish(self.tl_tx)
 
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
