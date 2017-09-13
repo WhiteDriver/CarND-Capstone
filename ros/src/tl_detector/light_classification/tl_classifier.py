@@ -28,6 +28,13 @@ class TLClassifier(object):
         self.session = tf.Session()
         self.saver.restore(self.session, self.save_file)
 
+    # Max-Min Normalization:
+    # https://www.mathworks.com/matlabcentral/answers/25759-normalizing-data-for-neural-networks
+    def Max_Min(self, Array, ra=0.9, rb=0.1):
+        Max = np.max(Array)
+        Min = np.min(Array)
+        return ((ra - rb) * ((Array - Min) / (Max - Min)) + rb)
+
     def LeNet(self, x):
         # Hyperparameters
         mu = 0
@@ -78,6 +85,7 @@ class TLClassifier(object):
         fc3_W  = tf.Variable(tf.truncated_normal(shape=(25, 4), mean = mu, stddev = sigma))
         fc3_b  = tf.Variable(tf.zeros(4))
         logits = tf.matmul(fc2, fc3_W) + fc3_b
+
         return logits
 
     def get_classification(self, image):
@@ -101,6 +109,7 @@ class TLClassifier(object):
         if (image.shape[0] == 1096 and image.shape[1] == 1368): # rosbag
             image = image[100:image.shape[0]-350, 0:image.shape[1]]
             res = cv2.resize(image,None,fx=0.1, fy=0.1, interpolation = cv2.INTER_CUBIC)
+            res = self.Max_Min(res) # Normalization !!!!!!!!!! Normalization !!!!!!!!!! Normalization !!!!!!!!!!
             inp_img = res.reshape(1, 65, 137, 3)
             out_logits = self.session.run(self.logits, feed_dict={self.x: inp_img})
             out_idx = np.argmax(out_logits)
